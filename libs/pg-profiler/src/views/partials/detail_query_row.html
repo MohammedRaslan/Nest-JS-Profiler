@@ -1,0 +1,30 @@
+<details class="border border-gray-200 rounded-lg mb-4 bg-white shadow-sm group" {{ open }}>
+    <summary
+        class="flex justify-between items-center p-4 cursor-pointer list-none select-none hover:bg-gray-50 transition-colors">
+        <div class="flex items-center space-x-2">
+            <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Query #{{ index }}</span>
+            {{{ dbBadge }}}
+            {{{ opBadge }}}
+            {{{ connection }}}
+        </div>
+        <div class="flex items-center space-x-2">
+            <span class="text-xs font-medium {{{ durationClass }}} px-2 py-1 rounded">
+                {{ duration }}ms
+            </span>
+            <span class="text-xs text-gray-400 w-16 text-right">{{ rowCount }} rows</span>
+        </div>
+    </summary>
+    <div class="p-4 pt-0 border-t border-gray-100 mt-2">
+        <div class="bg-gray-900 rounded-md p-3 overflow-x-auto mb-2 group relative">
+            <code class="text-gray-100 font-mono text-sm block whitespace-pre-wrap">{{ query }}</code>
+        </div>
+        {{{ params }}}
+        {{{ filter }}}
+        {{{ explainPlan }}}
+        {{{ error }}}
+    </div>
+</details>

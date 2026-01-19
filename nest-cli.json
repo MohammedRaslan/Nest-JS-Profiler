@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "src",
+  "compilerOptions": {
+    "deleteOutDir": true
+  },
+  "projects": {
+    "pg-profiler": {
+      "type": "library",
+      "root": "libs/pg-profiler",
+      "entryFile": "index",
+      "sourceRoot": "libs/pg-profiler/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/pg-profiler/tsconfig.lib.json",
+        "assets": [
+          "**/*.html"
+        ],
+        "watchAssets": true
+      }
+    }
+  }
+}

@@ -1,0 +1,63 @@
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center gap-4">
+        <h2 class="font-semibold text-gray-700 whitespace-nowrap">Entity Explorer</h2>
+        <div class="text-sm text-gray-500">
+            Found <span class="font-bold text-gray-900">{{ totalEntities }}</span> entities
+        </div>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead class="bg-gray-50 text-gray-500 uppercase text-xs tracking-wider font-medium">
+                <tr>
+                    <th class="p-4 border-b border-gray-200 w-1/4">Entity Name</th>
+                    <th class="p-4 border-b border-gray-200 w-32">Type</th>
+                    <th class="p-4 border-b border-gray-200 w-1/4">Database</th>
+                    <th class="p-4 border-b border-gray-200 w-32">Connection</th>
+                    <th class="p-4 border-b border-gray-200 w-1/4">Table/Collection</th>
+                    <th class="p-4 border-b border-gray-200 w-24">Columns</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {{{ rows }}}
+            </tbody>
+        </table>
+    </div>
+
+    {{{ emptyState }}}
+</div>
+
+<script>
+    function toggleEntityRow(id) {
+        const row = document.getElementById(id);
+        const icon = document.getElementById('icon-' + id);
+        const contentDiv = document.getElementById('content-' + id);
+
+        if (!row || !icon) return;
+
+        // Toggle visibility
+        if (row.classList.contains('hidden')) {
+            row.classList.remove('hidden');
+            icon.classList.add('rotate-90');
+
+            // Populate if empty (lazy render)
+            if (contentDiv && contentDiv.children.length === 0) {
+                try {
+                    const columns = JSON.parse(row.dataset.columns || '[]');
+                    if (columns.length === 0) {
+                        contentDiv.innerHTML = '<span class="text-gray-400 italic">No columns defined</span>';
+                    } else {
+                        contentDiv.innerHTML = columns.map(col =>
+                            `<div class="bg-white px-2 py-1 rounded border border-gray-200 truncate" title="${col}">${col}</div>`
+                        ).join('');
+                    }
+                } catch (e) {
+                    console.error('Error parsing columns', e);
+                }
+            }
+        } else {
+            row.classList.add('hidden');
+            icon.classList.remove('rotate-90');
+        }
+    }
+</script>

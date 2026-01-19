@@ -1,0 +1,39 @@
+<tr class="hover:bg-gray-50 border-b border-gray-100 cursor-pointer transition-colors"
+    onclick="toggleEntityRow('{{ rowId }}')">
+    <td class="p-4 align-middle">
+        <div class="flex items-center">
+            <svg id="icon-{{ rowId }}" class="w-4 h-4 mr-2 text-gray-400 transform transition-transform duration-200"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+            <span class="font-medium text-gray-900">{{ name }}</span>
+        </div>
+    </td>
+    <td class="p-4 align-middle">
+        {{{ typeBadge }}}
+    </td>
+    <td class="p-4 align-middle text-gray-500 text-sm">
+        {{ database }}
+    </td>
+    <td class="p-4 align-middle">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+            {{ connection }}
+        </span>
+    </td>
+    <td class="p-4 align-middle text-gray-500 font-mono text-xs">
+        {{ tableName }}
+    </td>
+    <td class="p-4 align-middle text-gray-400 text-xs">
+        {{ columnsCount }} columns
+    </td>
+</tr>
+<tr id="{{ rowId }}" class="hidden bg-gray-50" data-columns='{{ columnsJson }}'>
+    <td colspan="6" class="p-4 border-b border-gray-100">
+        <div class="pl-6">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Properties / Columns</h4>
+            <div class="grid grid-cols-4 gap-2 text-sm text-gray-700 font-mono" id="content-{{ rowId }}">
+                <!-- JS will populate this -->
+            </div>
+        </div>
+    </td>
+</tr>

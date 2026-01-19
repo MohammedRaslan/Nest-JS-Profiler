@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{{ title }}} - NestJS Profiler</title>
+    <!-- Tailwind CSS from CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Custom scrollbar for better look */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+
+<body class="h-full">
+    <div class="min-h-full flex">
+        <!-- Sidebar -->
+        <div class="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col fixed h-full inset-y-0 z-10">
+            <div class="flex items-center px-6 h-16 bg-slate-800">
+                <span class="text-lg font-bold tracking-tight text-white">NestJS Profiler</span>
+            </div>
+            <nav class="flex-1 px-4 py-6 space-y-1">
+                <a href="/__profiler"
+                    class="flex items-center px-2 py-2 text-sm font-medium rounded-md group {{{ requestsActive }}}">
+                    <svg class="mr-3 flex-shrink-0 h-6 w-6 {{{ requestsIconClass }}}" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                    </svg>
+                    Requests
+                </a>
+                <a href="/__profiler/view/queries"
+                    class="flex items-center px-2 py-2 text-sm font-medium rounded-md group {{{ queriesActive }}}">
+                    <svg class="mr-3 flex-shrink-0 h-6 w-6 {{{ queriesIconClass }}}" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                    </svg>
+                    Database (Queries)
+                </a>
+                <a href="/__profiler/view/logs"
+                    class="flex items-center px-2 py-2 text-sm font-medium rounded-md group {{{ logsActive }}}">
+                    <svg class="mr-3 flex-shrink-0 h-6 w-6 {{{ logsIconClass }}}" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    Logs
+                </a>
+                <a href="/__profiler/view/entities"
+                    class="flex items-center px-2 py-2 text-sm font-medium rounded-md group {{{ entitiesActive }}}">
+                    <svg class="mr-3 flex-shrink-0 h-6 w-6 {{{ entitiesIconClass }}}" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    Entities
+                </a>
+            </nav>
+            <div class="flex-shrink-0 flex bg-slate-800 p-4">
+                <a href="#" class="flex-shrink-0 w-full group block">
+                    <div class="flex items-center">
+                        <div class="ml-3">
+                            <p class="text-xs font-medium text-white">v0.0.1</p>
+                            <p class="text-xs font-medium text-slate-300">@nestjs-pg-profiler</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col pl-64">
+            <div class="flex items-center px-6 h-16 bg-white border-b border-gray-200 flex justify-end">
+                <button onclick="window.location.reload()"
+                    class="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    title="Refresh Page">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </button>
+            </div>
+            <main class="flex-1">
+                <div class="py-6">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+                        {{{ content }}}
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+
+</html>
