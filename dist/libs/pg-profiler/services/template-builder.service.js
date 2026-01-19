@@ -166,10 +166,13 @@ let TemplateBuilderService = class TemplateBuilderService {
             dbBadge: this.viewService.getDatabaseBadge(q.database),
             opBadge: q.operation ? `<span class="text-xs px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-medium">${q.operation}</span>` : '',
             connection: q.connection ? `<span class="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 bg-gray-50">${q.connection}</span>` : '',
-            durationClass: q.duration > 50 ? 'text-red-600 bg-red-50' : 'text-gray-600 bg-gray-100',
+            durationClass: this.getDurationClass(q),
             duration: q.duration.toFixed(2),
             rowCount: q.rowCount ?? '-',
             query: q.database === 'mongodb' && q.query ? q.query : q.sql,
+            tagsBadges: (q.tags || []).map((t) => this.getTagBadge(t)).join(''),
+            duplicationWarning: q.duplicatedCount > 1 ? `<div class="mt-1 text-xs text-orange-600 font-medium flex items-center"><svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Executed ${q.duplicatedCount} times (N+1)</div>` : '',
+            planType: q.planType ? `<span class="ml-2 text-xs text-gray-400">(${q.planType})</span>` : '',
             params: q.params && q.params.length ? `
                 <div class="mt-2 text-xs">
                     <span class="text-gray-500 font-semibold">Parameters:</span>
@@ -199,6 +202,22 @@ let TemplateBuilderService = class TemplateBuilderService {
                 </div>
             ` : ''
         });
+    }
+    getTagBadge(tag) {
+        const styles = {
+            'slow': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+            'n+1': 'bg-orange-100 text-orange-800 border-orange-200',
+            'seq-scan': 'bg-red-100 text-red-800 border-red-200'
+        };
+        const style = styles[tag] || 'bg-gray-100 text-gray-600 border-gray-200';
+        return `<span class="ml-2 text-xs px-2 py-0.5 rounded border ${style} font-medium tracking-wide uppercase shadow-sm" style="font-size: 0.65rem;">${tag}</span>`;
+    }
+    getDurationClass(q) {
+        if (q.error)
+            return 'text-red-700 bg-red-50';
+        if (q.duration > 100)
+            return 'text-yellow-700 bg-yellow-50 font-bold';
+        return 'text-gray-600 bg-gray-100';
     }
     buildMetadataSidebar(p) {
         return this.viewService.render('partials/metadata_sidebar', {

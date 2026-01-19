@@ -11,6 +11,9 @@ export interface QueryProfile {
     error?: string;
     explainPlan?: any;
     connection?: string;
+    tags?: string[];
+    duplicatedCount?: number;
+    planType?: string;
 }
 export interface LogProfile {
     level: string;

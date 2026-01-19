@@ -86,7 +86,41 @@ let ProfilerService = ProfilerService_1 = class ProfilerService {
         profile.endTime = Date.now();
         profile.duration = profile.endTime - profile.startTime;
         profile.memory = process.memoryUsage();
+        this.analyzeRequest(profile);
         this.storage.save(profile);
+    }
+    analyzeRequest(profile) {
+        if (!profile.queries || profile.queries.length === 0)
+            return;
+        const queryGroups = new Map();
+        profile.queries.forEach((q, index) => {
+            const fingerprint = q.sql || q.query || 'unknown';
+            if (!queryGroups.has(fingerprint)) {
+                queryGroups.set(fingerprint, { count: 0, indices: [] });
+            }
+            const group = queryGroups.get(fingerprint);
+            group.count++;
+            group.indices.push(index);
+            if (q.duration > 100) {
+                this.addTag(q, 'slow');
+            }
+        });
+        queryGroups.forEach((group) => {
+            if (group.count > 1) {
+                group.indices.forEach(index => {
+                    const q = profile.queries[index];
+                    q.duplicatedCount = group.count;
+                    this.addTag(q, 'n+1');
+                });
+            }
+        });
+    }
+    addTag(query, tag) {
+        if (!query.tags)
+            query.tags = [];
+        if (!query.tags.includes(tag)) {
+            query.tags.push(tag);
+        }
     }
     addQuery(query) {
         const profile = this.als.getStore();

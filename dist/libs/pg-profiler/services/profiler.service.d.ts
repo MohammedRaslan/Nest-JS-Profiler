@@ -10,6 +10,8 @@ export declare class ProfilerService {
     isEnabled(): boolean;
     startRequest(): RequestProfile | null;
     endRequest(profile: RequestProfile): void;
+    private analyzeRequest;
+    private addTag;
     addQuery(query: QueryProfile): void;
     addLog(log: LogProfile): void;
     getCurrentProfile(): RequestProfile | undefined;

@@ -15,6 +15,8 @@ export declare class TemplateBuilderService {
     buildNotFound(id: string): string;
     private buildRequestRow;
     private buildQueryDetail;
+    private getTagBadge;
+    private getDurationClass;
     private buildMetadataSidebar;
     private buildLogRow;
     private buildPagination;

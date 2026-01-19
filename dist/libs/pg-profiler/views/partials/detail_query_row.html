@@ -9,9 +9,11 @@
             <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Query #{{ index }}</span>
             {{{ dbBadge }}}
             {{{ opBadge }}}
+            {{{ tagsBadges }}}
             {{{ connection }}}
         </div>
         <div class="flex items-center space-x-2">
+            {{{ planType }}}
             <span class="text-xs font-medium {{{ durationClass }}} px-2 py-1 rounded">
                 {{ duration }}ms
             </span>
@@ -22,6 +24,7 @@
         <div class="bg-gray-900 rounded-md p-3 overflow-x-auto mb-2 group relative">
             <code class="text-gray-100 font-mono text-sm block whitespace-pre-wrap">{{ query }}</code>
         </div>
+        {{{ duplicationWarning }}}
         {{{ params }}}
         {{{ filter }}}
         {{{ explainPlan }}}

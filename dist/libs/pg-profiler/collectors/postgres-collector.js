@@ -132,6 +132,16 @@ let PostgresCollector = PostgresCollector_1 = class PostgresCollector {
                             .then(plan => {
                             if (plan) {
                                 queryProfile.explainPlan = plan;
+                                const planString = JSON.stringify(plan).toLowerCase();
+                                if (planString.includes('seq scan')) {
+                                    if (!queryProfile.tags)
+                                        queryProfile.tags = [];
+                                    queryProfile.tags.push('seq-scan');
+                                    queryProfile.planType = 'Seq Scan';
+                                }
+                                else if (planString.includes('index scan') || planString.includes('index only scan')) {
+                                    queryProfile.planType = 'Index Scan';
+                                }
                             }
                         })
                             .catch(e => {

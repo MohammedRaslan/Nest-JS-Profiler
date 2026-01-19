@@ -48,9 +48,52 @@ export class ProfilerService {
         profile.duration = profile.endTime - profile.startTime;
         profile.memory = process.memoryUsage();
 
+        this.analyzeRequest(profile);
+
         this.storage.save(profile);
-        // this.als.disable(); // Do not disable explicitly if it breaks nested flows, but exit is automatic with run/enterWith usually. 
-        // Actually enterWith is persistent context for the promise chain.
+    }
+
+    private analyzeRequest(profile: RequestProfile) {
+        if (!profile.queries || profile.queries.length === 0) return;
+
+        const queryGroups = new Map<string, { count: number, indices: number[] }>();
+
+        // 1. Group queries to find N+1
+        profile.queries.forEach((q, index) => {
+            // Simple normalization: Use the SQL/Query string as the fingerprint
+            // For better accuracy, we might want to mask literals, but exact match is a good start for N+1 loops
+            const fingerprint = q.sql || q.query || 'unknown';
+
+            if (!queryGroups.has(fingerprint)) {
+                queryGroups.set(fingerprint, { count: 0, indices: [] });
+            }
+            const group = queryGroups.get(fingerprint);
+            group!.count++;
+            group!.indices.push(index);
+
+            // 2. Tag Slow Queries (> 100ms)
+            if (q.duration > 100) {
+                this.addTag(q, 'slow');
+            }
+        });
+
+        // 3. Mark N+1
+        queryGroups.forEach((group) => {
+            if (group.count > 1) {
+                group.indices.forEach(index => {
+                    const q = profile.queries[index];
+                    q.duplicatedCount = group.count;
+                    this.addTag(q, 'n+1');
+                });
+            }
+        });
+    }
+
+    private addTag(query: QueryProfile, tag: string) {
+        if (!query.tags) query.tags = [];
+        if (!query.tags.includes(tag)) {
+            query.tags.push(tag);
+        }
     }
 
     addQuery(query: QueryProfile) {
