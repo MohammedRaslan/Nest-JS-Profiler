@@ -11,6 +11,9 @@ export interface QueryProfile {
     error?: string;
     explainPlan?: any;
     connection?: string; // e.g., "mydb@localhost" or "mydb@localhost:27017"
+    tags?: string[]; // e.g. 'slow', 'n+1', 'seq-scan'
+    duplicatedCount?: number; // How many times this identical query was run
+    planType?: string; // e.g. 'Seq Scan', 'Index Scan', 'COLLSCAN'
 }
 
 export interface LogProfile {
