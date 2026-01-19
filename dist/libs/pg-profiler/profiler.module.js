@@ -13,6 +13,7 @@ const profiler_service_1 = require("./services/profiler.service");
 const view_service_1 = require("./services/view.service");
 const template_builder_service_1 = require("./services/template-builder.service");
 const entity_explorer_service_1 = require("./services/entity-explorer.service");
+const route_explorer_service_1 = require("./services/route-explorer.service");
 const postgres_collector_1 = require("./collectors/postgres-collector");
 const mongo_collector_1 = require("./collectors/mongo-collector");
 const mysql_collector_1 = require("./collectors/mysql-collector");
@@ -52,6 +53,7 @@ let ProfilerModule = ProfilerModule_1 = class ProfilerModule {
                 view_service_1.ViewService,
                 template_builder_service_1.TemplateBuilderService,
                 entity_explorer_service_1.EntityExplorerService,
+                route_explorer_service_1.RouteExplorerService,
                 postgres_collector_1.PostgresCollector,
                 mongo_collector_1.MongoCollector,
                 mysql_collector_1.MysqlCollector,
@@ -67,13 +69,16 @@ let ProfilerModule = ProfilerModule_1 = class ProfilerModule {
     }
     static initialize(app) {
         try {
-            const explorer = app.get(entity_explorer_service_1.EntityExplorerService);
             const container = app.container;
             const modulesContainer = container.getModules();
-            explorer.initialize(modulesContainer);
+            const entityExplorer = app.get(entity_explorer_service_1.EntityExplorerService);
+            entityExplorer.initialize(modulesContainer);
+            const routeExplorer = app.get(route_explorer_service_1.RouteExplorerService);
+            const globalPrefix = app.config?.getGlobalPrefix ? app.config.getGlobalPrefix() : '';
+            routeExplorer.initialize(modulesContainer, globalPrefix);
         }
         catch (e) {
-            console.warn('Profiler: Could not initialize Entity Explorer. Ensure ProfilerModule is imported.', e);
+            console.warn('Profiler: Could not initialize Explorers. Ensure ProfilerModule is imported.', e);
         }
     }
 };
@@ -88,10 +93,12 @@ exports.ProfilerModule = ProfilerModule = ProfilerModule_1 = __decorate([
             view_service_1.ViewService,
             template_builder_service_1.TemplateBuilderService,
             entity_explorer_service_1.EntityExplorerService,
+            route_explorer_service_1.RouteExplorerService,
         ],
         exports: [
             profiler_service_1.ProfilerService,
             entity_explorer_service_1.EntityExplorerService,
+            route_explorer_service_1.RouteExplorerService,
         ],
     })
 ], ProfilerModule);

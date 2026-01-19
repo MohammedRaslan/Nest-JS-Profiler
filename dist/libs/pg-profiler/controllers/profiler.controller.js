@@ -18,16 +18,19 @@ const profiler_service_1 = require("../services/profiler.service");
 const view_service_1 = require("../services/view.service");
 const template_builder_service_1 = require("../services/template-builder.service");
 const entity_explorer_service_1 = require("../services/entity-explorer.service");
+const route_explorer_service_1 = require("../services/route-explorer.service");
 let ProfilerController = class ProfilerController {
     profilerService;
     viewService;
     templateBuilder;
     entityExplorer;
-    constructor(profilerService, viewService, templateBuilder, entityExplorer) {
+    routeExplorer;
+    constructor(profilerService, viewService, templateBuilder, entityExplorer, routeExplorer) {
         this.profilerService = profilerService;
         this.viewService = viewService;
         this.templateBuilder = templateBuilder;
         this.entityExplorer = entityExplorer;
+        this.routeExplorer = routeExplorer;
     }
     async dashboard(res) {
         const profiles = await this.profilerService.getDashboardData();
@@ -103,6 +106,13 @@ let ProfilerController = class ProfilerController {
         res.header('Content-Type', 'text/html');
         res.send(html);
     }
+    async listRoutes(res) {
+        const routes = this.routeExplorer.getRoutes();
+        const content = this.templateBuilder.buildRoutesList(routes);
+        const html = this.viewService.renderWithLayout('Routes Explorer', content, 'routes');
+        res.header('Content-Type', 'text/html');
+        res.send(html);
+    }
 };
 exports.ProfilerController = ProfilerController;
 __decorate([
@@ -161,11 +171,19 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], ProfilerController.prototype, "listEntities", null);
+__decorate([
+    (0, common_1.Get)('view/routes'),
+    __param(0, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ProfilerController.prototype, "listRoutes", null);
 exports.ProfilerController = ProfilerController = __decorate([
     (0, common_1.Controller)('__profiler'),
     __metadata("design:paramtypes", [profiler_service_1.ProfilerService,
         view_service_1.ViewService,
         template_builder_service_1.TemplateBuilderService,
-        entity_explorer_service_1.EntityExplorerService])
+        entity_explorer_service_1.EntityExplorerService,
+        route_explorer_service_1.RouteExplorerService])
 ], ProfilerController);
 //# sourceMappingURL=profiler.controller.js.map

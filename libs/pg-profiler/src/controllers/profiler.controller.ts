@@ -5,6 +5,8 @@ import { ViewService } from '../services/view.service';
 import { TemplateBuilderService } from '../services/template-builder.service';
 import { EntityExplorerService } from '../services/entity-explorer.service';
 
+import { RouteExplorerService } from '../services/route-explorer.service';
+
 @Controller('__profiler')
 export class ProfilerController {
     constructor(
@@ -12,6 +14,7 @@ export class ProfilerController {
         private readonly viewService: ViewService,
         private readonly templateBuilder: TemplateBuilderService,
         private readonly entityExplorer: EntityExplorerService,
+        private readonly routeExplorer: RouteExplorerService,
     ) { }
 
     @Get()
@@ -106,6 +109,16 @@ export class ProfilerController {
         const entities = this.entityExplorer.getEntities();
         const content = this.templateBuilder.buildEntitiesList(entities);
         const html = this.viewService.renderWithLayout('Entity Explorer', content, 'entities');
+
+        res.header('Content-Type', 'text/html');
+        res.send(html);
+    }
+
+    @Get('view/routes')
+    async listRoutes(@Res() res: Response) {
+        const routes = this.routeExplorer.getRoutes();
+        const content = this.templateBuilder.buildRoutesList(routes);
+        const html = this.viewService.renderWithLayout('Routes Explorer', content, 'routes');
 
         res.header('Content-Type', 'text/html');
         res.send(html);

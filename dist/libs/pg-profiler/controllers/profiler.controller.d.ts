@@ -3,12 +3,14 @@ import { ProfilerService } from '../services/profiler.service';
 import { ViewService } from '../services/view.service';
 import { TemplateBuilderService } from '../services/template-builder.service';
 import { EntityExplorerService } from '../services/entity-explorer.service';
+import { RouteExplorerService } from '../services/route-explorer.service';
 export declare class ProfilerController {
     private readonly profilerService;
     private readonly viewService;
     private readonly templateBuilder;
     private readonly entityExplorer;
-    constructor(profilerService: ProfilerService, viewService: ViewService, templateBuilder: TemplateBuilderService, entityExplorer: EntityExplorerService);
+    private readonly routeExplorer;
+    constructor(profilerService: ProfilerService, viewService: ViewService, templateBuilder: TemplateBuilderService, entityExplorer: EntityExplorerService, routeExplorer: RouteExplorerService);
     dashboard(res: Response): Promise<void>;
     listJson(): Promise<import("..").RequestProfile[]>;
     debugQuery(): Promise<{
@@ -25,4 +27,5 @@ export declare class ProfilerController {
     listQueries(res: Response): Promise<void>;
     listLogs(res: Response, page?: number): Promise<void>;
     listEntities(res: Response): Promise<void>;
+    listRoutes(res: Response): Promise<void>;
 }
