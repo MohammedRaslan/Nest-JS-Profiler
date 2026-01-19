@@ -1,0 +1,83 @@
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center gap-4">
+        <h2 class="font-semibold text-gray-700 whitespace-nowrap">HTTP Requests</h2>
+        <div class="flex items-center gap-3 w-full justify-end">
+            <input type="text" id="searchInput" placeholder="Search URI or Method..."
+                class="w-full max-w-xs px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+                onkeyup="filterTable()">
+            <span
+                class="text-xs text-gray-500 bg-white border border-gray-200 px-2 py-1.5 rounded-md whitespace-nowrap">Last
+                100 requests</span>
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse" id="requestsTable">
+            <thead class="bg-gray-50 text-gray-500 uppercase text-xs tracking-wider font-medium">
+                <tr>
+                    <th class="p-4 border-b border-gray-200 w-16">Method</th>
+                    <th class="p-4 border-b border-gray-200">URI</th>
+                    <th class="p-4 border-b border-gray-200 w-24">Status</th>
+                    <th class="p-4 border-b border-gray-200 w-24">Duration</th>
+                    <th class="p-4 border-b border-gray-200 w-24 text-center">Queries</th>
+                    <th class="p-4 border-b border-gray-200 w-32 text-right cursor-pointer hover:bg-gray-100 select-none group"
+                        onclick="toggleSort()">
+                        <div class="flex items-center justify-end gap-1">
+                            Happened
+                            <div class="flex flex-col text-gray-400">
+                                <svg id="sortAsc" class="w-2 h-2 opacity-100" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M7 14l5-5 5 5z" />
+                                </svg>
+                                <svg id="sortDesc" class="w-2 h-2 opacity-50" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M7 10l5 5 5-5z" />
+                                </svg>
+                            </div>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100" id="tableBody">
+                {{{ rows }}}
+            </tbody>
+        </table>
+    </div>
+    {{{ emptyState }}}
+
+    <script>
+        function filterTable() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toLowerCase();
+            const table = document.getElementById('requestsTable');
+            const tr = table.getElementsByTagName('tr');
+
+            for (let i = 1; i < tr.length; i++) {
+                const tdVerb = tr[i].getElementsByTagName('td')[0];
+                const tdUri = tr[i].getElementsByTagName('td')[1];
+                if (tdVerb && tdUri) {
+                    const txtValue = (tdVerb.textContent + " " + tdUri.textContent).toLowerCase();
+                    if (txtValue.indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }
+            }
+        }
+
+        function toggleSort() {
+            const table = document.getElementById('tableBody');
+            const rows = Array.from(table.rows);
+            rows.reverse().forEach(row => table.appendChild(row));
+
+            const asc = document.getElementById('sortAsc');
+            const desc = document.getElementById('sortDesc');
+
+            if (asc.classList.contains('text-indigo-600')) {
+                asc.classList.remove('text-indigo-600', 'opacity-100'); asc.classList.add('opacity-50');
+                desc.classList.add('text-indigo-600', 'opacity-100'); desc.classList.remove('opacity-50');
+            } else {
+                asc.classList.add('text-indigo-600', 'opacity-100'); asc.classList.remove('opacity-50');
+                desc.classList.remove('text-indigo-600', 'opacity-100'); desc.classList.add('opacity-50');
+            }
+        }
+    </script>
+</div>

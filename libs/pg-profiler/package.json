@@ -1,0 +1,24 @@
+{
+    "name": "@nestjs-pg-profiler/core",
+    "version": "0.0.1",
+    "description": "NestJS PostgreSQL Profiler",
+    "main": "dist/index",
+    "types": "dist/index.d.ts",
+    "dependencies": {},
+    "peerDependencies": {
+        "@nestjs/common": "^10.0.0 || ^11.0.0",
+        "@nestjs/core": "^10.0.0 || ^11.0.0",
+        "pg": ">=8.0.0",
+        "mongodb": ">=4.0.0",
+        "mysql2": ">=2.0.0",
+        "rxjs": "^7.0.0"
+    },
+    "peerDependenciesMeta": {
+        "mongodb": {
+            "optional": true
+        },
+        "mysql2": {
+            "optional": true
+        }
+    }
+}
