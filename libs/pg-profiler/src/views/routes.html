@@ -1,0 +1,29 @@
+<div class="mb-4 flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-gray-800">Routes Explorer</h1>
+    <span class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+        {{ totalRoutes }} Routes Found
+    </span>
+</div>
+
+<div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method
+                    </th>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Path</th>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Controller</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {{{ rows }}}
+            </tbody>
+        </table>
+    </div>
+    {{{ emptyState }}}
+</div>
