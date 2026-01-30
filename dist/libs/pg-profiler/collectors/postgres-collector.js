@@ -79,79 +79,90 @@ let PostgresCollector = PostgresCollector_1 = class PostgresCollector {
         }
         this.logger.log(`Initializing PostgreSQL Profiler: Patching ${this.options.pgDriver ? 'INJECTED' : 'LOCAL'} pg.Client.prototype.query`);
         this.originalQuery = Client.prototype.query;
+        if (!this.originalQuery) {
+            this.logger.warn('Failed to patch PostgreSQL: Client.prototype.query is undefined');
+            return;
+        }
         Client.prototype.query = function (...args) {
             const clientInstance = this;
             const startTime = Date.now();
-            const dbName = clientInstance.database || clientInstance.connectionParameters?.database || 'unknown';
-            const dbHost = clientInstance.host || clientInstance.connectionParameters?.host || 'localhost';
-            const connectionName = `${dbName}@${dbHost}`;
+            let queryText = '';
+            let queryParams = [];
+            let connectionName = 'unknown';
+            try {
+                const dbName = clientInstance.database || clientInstance.connectionParameters?.database || 'unknown';
+                const dbHost = clientInstance.host || clientInstance.connectionParameters?.host || 'localhost';
+                connectionName = `${dbName}@${dbHost}`;
+                if (typeof args[0] === 'string') {
+                    queryText = args[0];
+                    if (args[1] instanceof Array) {
+                        queryParams = args[1];
+                    }
+                }
+                else if (typeof args[0] === 'object' && args[0] !== null) {
+                    queryText = args[0].text || '';
+                    queryParams = args[0].values || [];
+                }
+            }
+            catch (e) {
+            }
             if (process.env.PROFILER_DEBUG) {
                 console.log('[PostgresCollector] Intercepted query call');
             }
-            let queryText = '';
-            let queryParams = [];
-            let callback;
-            if (typeof args[0] === 'string') {
-                queryText = args[0];
-                if (args[1] instanceof Array) {
-                    queryParams = args[1];
-                    if (typeof args[2] === 'function')
-                        callback = args[2];
-                }
-                else if (typeof args[1] === 'function') {
-                    callback = args[1];
-                }
-            }
-            else if (typeof args[0] === 'object') {
-                queryText = args[0].text;
-                queryParams = args[0].values;
-                if (typeof args[1] === 'function') {
-                    callback = args[1];
-                }
-            }
             const captureQuery = (rowCount, err) => {
-                const endTime = Date.now();
-                const duration = endTime - startTime;
-                const queryProfile = {
-                    sql: queryText,
-                    params: queryParams,
-                    duration,
-                    startTime,
-                    rowCount: rowCount ?? undefined,
-                    error: err?.message,
-                    connection: connectionName,
-                    database: 'postgres',
-                };
-                const profile = self.profiler.getCurrentProfile();
-                if (profile) {
-                    self.profiler.addQuery(queryProfile);
-                    const explainConfig = self.options.explain;
-                    const isExplainable = /^\s*(SELECT|INSERT|UPDATE|DELETE|WITH)/i.test(queryText) && !/^\s*EXPLAIN/i.test(queryText);
-                    if (explainConfig?.enabled && isExplainable && duration >= (explainConfig.thresholdMs || 0)) {
-                        self.explainAnalyzer.analyze(clientInstance, queryText, queryParams, explainConfig.analyze)
-                            .then(plan => {
-                            if (plan) {
-                                queryProfile.explainPlan = plan;
-                                const planString = JSON.stringify(plan).toLowerCase();
-                                if (planString.includes('seq scan')) {
-                                    if (!queryProfile.tags)
-                                        queryProfile.tags = [];
-                                    queryProfile.tags.push('seq-scan');
-                                    queryProfile.planType = 'Seq Scan';
+                try {
+                    const endTime = Date.now();
+                    const duration = endTime - startTime;
+                    const queryProfile = {
+                        sql: queryText,
+                        params: queryParams,
+                        duration,
+                        startTime,
+                        rowCount: rowCount ?? undefined,
+                        error: err?.message,
+                        connection: connectionName,
+                        database: 'postgres',
+                    };
+                    const profile = self.profiler.getCurrentProfile();
+                    if (profile) {
+                        self.profiler.addQuery(queryProfile);
+                        const explainConfig = self.options.explain;
+                        const isExplainable = queryText && /^\s*(SELECT|INSERT|UPDATE|DELETE|WITH)/i.test(queryText) && !/^\s*EXPLAIN/i.test(queryText);
+                        if (explainConfig?.enabled && isExplainable && duration >= (explainConfig.thresholdMs || 0)) {
+                            self.explainAnalyzer.analyze(clientInstance, queryText, queryParams, explainConfig.analyze)
+                                .then(plan => {
+                                if (plan) {
+                                    queryProfile.explainPlan = plan;
+                                    const planString = JSON.stringify(plan).toLowerCase();
+                                    if (planString.includes('seq scan')) {
+                                        if (!queryProfile.tags)
+                                            queryProfile.tags = [];
+                                        queryProfile.tags.push('seq-scan');
+                                        queryProfile.planType = 'Seq Scan';
+                                    }
+                                    else if (planString.includes('index scan') || planString.includes('index only scan')) {
+                                        queryProfile.planType = 'Index Scan';
+                                    }
                                 }
-                                else if (planString.includes('index scan') || planString.includes('index only scan')) {
-                                    queryProfile.planType = 'Index Scan';
-                                }
-                            }
-                        })
-                            .catch(e => {
-                        });
+                            })
+                                .catch(e => {
+                            });
+                        }
+                    }
+                    else if (process.env.PROFILER_DEBUG) {
+                        self.logger.debug(`Query captured OUTSIDE request context: ${(queryText || 'UNKNOWN').substring(0, 50)}...`);
                     }
                 }
-                else {
-                    self.logger.warn(`Query captured OUTSIDE request context: ${queryText.substring(0, 50)}...`);
+                catch (e) {
                 }
             };
+            let callback;
+            if (args.length > 0) {
+                const lastArg = args[args.length - 1];
+                if (typeof lastArg === 'function') {
+                    callback = lastArg;
+                }
+            }
             if (callback) {
                 const originalCallback = callback;
                 args[args.length - 1] = (err, result) => {

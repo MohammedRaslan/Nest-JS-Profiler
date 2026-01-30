@@ -44,8 +44,13 @@ let MongoCollector = MongoCollector_1 = class MongoCollector {
         }
     }
     patchMongo() {
-        if (!this.mongodb || !this.mongodb.Collection) {
-            this.logger.warn('mongodb.Collection not found, cannot patch');
+        if (!this.mongodb) {
+            this.logger.warn('MongoDB driver is undefined provided to MongoCollector');
+            return;
+        }
+        if (!this.mongodb.Collection) {
+            this.logger.warn(`mongodb.Collection not found on provided driver. Keys: ${Object.keys(this.mongodb).join(', ')}`);
+            this.logger.warn('If you are using Mongoose, ensure you are passing the "mongodb" driver instance, not Mongoose itself.');
             return;
         }
         const self = this;
@@ -55,11 +60,17 @@ let MongoCollector = MongoCollector_1 = class MongoCollector {
             'updateOne', 'updateMany', 'deleteOne', 'deleteMany',
             'aggregate', 'countDocuments', 'replaceOne'
         ];
+        this.logger.debug(`Patching MongoDB Collection methods: ${operations.join(', ')}`);
         operations.forEach(opName => {
             const originalMethod = Collection.prototype[opName];
-            if (!originalMethod)
+            if (!originalMethod) {
+                this.logger.warn(`Could not find method ${opName} on Collection.prototype`);
                 return;
+            }
             Collection.prototype[opName] = function (...args) {
+                if (process.env.PROFILER_DEBUG) {
+                    self.logger.debug(`Mongo Intercepted: ${opName}`);
+                }
                 const startTime = Date.now();
                 const collectionName = this.collectionName || 'unknown';
                 const dbName = this.s?.db?.databaseName || this.dbName || 'unknown';

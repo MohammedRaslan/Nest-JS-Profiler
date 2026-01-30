@@ -13,6 +13,7 @@ export declare class TemplateBuilderService {
     buildLogsList(logs: any[], currentPage: number, totalPages: number, totalLogs: number): string;
     buildEntitiesList(entities: any[]): string;
     buildNotFound(id: string): string;
+    buildRoutesList(routes: any[]): string;
     private buildRequestRow;
     private buildQueryDetail;
     private getTagBadge;

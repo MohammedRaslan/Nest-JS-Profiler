@@ -145,6 +145,21 @@ let TemplateBuilderService = class TemplateBuilderService {
     buildNotFound(id) {
         return this.viewService.render('not_found', { id });
     }
+    buildRoutesList(routes) {
+        const rows = routes.map(r => this.viewService.render('partials/route_row', {
+            methodBadge: this.viewService.getMethodBadge(r.method),
+            method: r.method,
+            path: r.path,
+            controller: r.controller,
+            handler: r.handler
+        })).join('');
+        const emptyState = !rows ? '<div class="p-8 text-center text-gray-500">No routes found.</div>' : '';
+        return this.viewService.render('routes', {
+            totalRoutes: routes.length,
+            rows,
+            emptyState
+        });
+    }
     buildRequestRow(p) {
         const statusCode = p.statusCode || 200;
         return this.viewService.render('partials/request_row', {
