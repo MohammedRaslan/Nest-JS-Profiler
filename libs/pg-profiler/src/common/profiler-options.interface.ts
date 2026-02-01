@@ -17,6 +17,7 @@ export interface ProfilerOptions {
     collectQueries?: boolean;
     collectLogs?: boolean;
     collectMongo?: boolean; // Enable/disable MongoDB profiling (default: true)
+    collectCache?: boolean; // Enable/disable Cache profiling (default: true)
     collectMysql?: boolean; // Enable/disable MySQL profiling (default: true)
     explain?: ProfilerExplainOptions;
 }

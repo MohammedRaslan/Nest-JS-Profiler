@@ -9,6 +9,7 @@ import { PostgresCollector } from './collectors/postgres-collector';
 import { MongoCollector } from './collectors/mongo-collector';
 import { MysqlCollector } from './collectors/mysql-collector';
 import { LogCollector } from './collectors/log-collector';
+import { CacheCollector } from './collectors/cache-collector';
 import { ExplainAnalyzer } from './analyzers/explain-analyzer';
 import { InMemoryProfilerStorage, ProfilerStorage } from './storage/profiler-storage.interface';
 import { ProfilerController } from './controllers/profiler.controller';
@@ -71,6 +72,7 @@ export class ProfilerModule implements NestModule {
                 MongoCollector,
                 MysqlCollector,
                 LogCollector,
+                CacheCollector,
                 ExplainAnalyzer,
                 {
                     provide: APP_INTERCEPTOR,
