@@ -21,6 +21,16 @@ export interface LogProfile {
     context?: string;
     timestamp: number;
 }
+export interface CacheProfile {
+    key: string;
+    store: string;
+    operation: 'get' | 'set' | 'del' | 'reset' | 'unknown';
+    result: 'hit' | 'miss' | 'success' | 'fail' | null;
+    ttl?: number;
+    duration: number;
+    startTime: number;
+    value?: any;
+}
 export interface RequestProfile {
     id: string;
     method: string;
@@ -41,6 +51,7 @@ export interface RequestProfile {
     };
     queries: QueryProfile[];
     logs: LogProfile[];
+    cache?: CacheProfile[];
     timestamp: number;
     requestHeaders?: Record<string, any>;
     requestBody?: any;

@@ -18,6 +18,7 @@ const postgres_collector_1 = require("./collectors/postgres-collector");
 const mongo_collector_1 = require("./collectors/mongo-collector");
 const mysql_collector_1 = require("./collectors/mysql-collector");
 const log_collector_1 = require("./collectors/log-collector");
+const cache_collector_1 = require("./collectors/cache-collector");
 const explain_analyzer_1 = require("./analyzers/explain-analyzer");
 const profiler_storage_interface_1 = require("./storage/profiler-storage.interface");
 const profiler_controller_1 = require("./controllers/profiler.controller");
@@ -58,6 +59,7 @@ let ProfilerModule = ProfilerModule_1 = class ProfilerModule {
                 mongo_collector_1.MongoCollector,
                 mysql_collector_1.MysqlCollector,
                 log_collector_1.LogCollector,
+                cache_collector_1.CacheCollector,
                 explain_analyzer_1.ExplainAnalyzer,
                 {
                     provide: core_1.APP_INTERCEPTOR,

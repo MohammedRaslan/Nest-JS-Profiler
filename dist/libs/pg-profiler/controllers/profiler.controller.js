@@ -113,6 +113,13 @@ let ProfilerController = class ProfilerController {
         res.header('Content-Type', 'text/html');
         res.send(html);
     }
+    async listCache(res) {
+        const cacheOps = await this.profilerService.getCacheList();
+        const content = this.templateBuilder.buildCacheList(cacheOps);
+        const html = this.viewService.renderWithLayout('Cache Operations', content, 'cache');
+        res.header('Content-Type', 'text/html');
+        res.send(html);
+    }
 };
 exports.ProfilerController = ProfilerController;
 __decorate([
@@ -178,6 +185,13 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], ProfilerController.prototype, "listRoutes", null);
+__decorate([
+    (0, common_1.Get)('view/cache'),
+    __param(0, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ProfilerController.prototype, "listCache", null);
 exports.ProfilerController = ProfilerController = __decorate([
     (0, common_1.Controller)('__profiler'),
     __metadata("design:paramtypes", [profiler_service_1.ProfilerService,

@@ -14,6 +14,7 @@ export declare class TemplateBuilderService {
     buildEntitiesList(entities: any[]): string;
     buildNotFound(id: string): string;
     buildRoutesList(routes: any[]): string;
+    buildCacheList(cacheOps: any[]): string;
     private buildRequestRow;
     private buildQueryDetail;
     private getTagBadge;
@@ -22,4 +23,5 @@ export declare class TemplateBuilderService {
     private buildLogRow;
     private buildPagination;
     private getStatusColor;
+    private buildCacheSection;
 }

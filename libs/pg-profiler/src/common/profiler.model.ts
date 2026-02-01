@@ -23,6 +23,17 @@ export interface LogProfile {
     timestamp: number;
 }
 
+export interface CacheProfile {
+    key: string;
+    store: string; // e.g., 'redis', 'memory'
+    operation: 'get' | 'set' | 'del' | 'reset' | 'unknown';
+    result: 'hit' | 'miss' | 'success' | 'fail' | null;
+    ttl?: number;
+    duration: number; // ms
+    startTime: number;
+    value?: any; // Value metadata or masked value
+}
+
 export interface RequestProfile {
     id: string;
     method: string;
@@ -43,6 +54,7 @@ export interface RequestProfile {
     };
     queries: QueryProfile[];
     logs: LogProfile[];
+    cache?: CacheProfile[];
     timestamp: number;
     requestHeaders?: Record<string, any>;
     requestBody?: any;

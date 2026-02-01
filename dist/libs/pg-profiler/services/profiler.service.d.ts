@@ -14,6 +14,7 @@ export declare class ProfilerService {
     private addTag;
     addQuery(query: QueryProfile): void;
     addLog(log: LogProfile): void;
+    addCache(cacheProfile: import('../common/profiler.model').CacheProfile): void;
     getCurrentProfile(): RequestProfile | undefined;
     getDashboardData(): Promise<RequestProfile[]>;
     getProfileDetail(id: string): Promise<RequestProfile | null>;
@@ -26,4 +27,5 @@ export declare class ProfilerService {
     }>;
     getAllProfilesJson(): Promise<RequestProfile[]>;
     getProfileJson(id: string): Promise<RequestProfile | null>;
+    getCacheList(): Promise<any[]>;
 }

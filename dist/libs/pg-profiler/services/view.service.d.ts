@@ -12,4 +12,6 @@ export declare class ViewService {
     getMethodBadge(method: string): string;
     getDatabaseBadge(database: string): string;
     getLogLevelColor(level: string): string;
+    getCacheOperationBadge(op: string): string;
+    getCacheResultBadge(result: string): string;
 }

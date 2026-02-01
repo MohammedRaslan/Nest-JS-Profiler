@@ -41,7 +41,8 @@ let TemplateBuilderService = class TemplateBuilderService {
             headersTable: this.buildHeadersTable(profile.requestHeaders),
             bodyView: this.buildBodyView(profile.requestBody),
             exceptionView: this.buildExceptionView(profile.exception),
-            timingBar: this.buildTimingBar(profile.timings, profile.duration || 0)
+            timingBar: this.buildTimingBar(profile.timings, profile.duration || 0),
+            cacheSection: this.buildCacheSection(profile.cache || [])
         });
     }
     buildHeadersTable(headers) {
@@ -156,6 +157,22 @@ let TemplateBuilderService = class TemplateBuilderService {
         const emptyState = !rows ? '<div class="p-8 text-center text-gray-500">No routes found.</div>' : '';
         return this.viewService.render('routes', {
             totalRoutes: routes.length,
+            rows,
+            emptyState
+        });
+    }
+    buildCacheList(cacheOps) {
+        const rows = cacheOps.map(c => this.viewService.render('partials/cache_row', {
+            operationBadge: this.viewService.getCacheOperationBadge(c.operation),
+            key: c.key,
+            resultBadge: this.viewService.getCacheResultBadge(c.result),
+            store: c.store,
+            duration: c.duration.toFixed(2),
+            timeAgo: this.viewService.timeAgo(c.startTime)
+        })).join('');
+        const emptyState = !rows ? '<div class="p-8 text-center text-gray-500">No cache operations recorded.</div>' : '';
+        return this.viewService.render('cache', {
+            totalCacheOps: cacheOps.length,
             rows,
             emptyState
         });
@@ -290,6 +307,38 @@ let TemplateBuilderService = class TemplateBuilderService {
         if (statusCode >= 300)
             return 'bg-blue-500';
         return 'bg-green-500';
+    }
+    buildCacheSection(cache) {
+        if (!cache || cache.length === 0)
+            return '';
+        const rows = cache.map(c => this.viewService.render('partials/cache_row', {
+            operationBadge: this.viewService.getCacheOperationBadge(c.operation),
+            key: c.key,
+            resultBadge: this.viewService.getCacheResultBadge(c.result),
+            store: c.store,
+            duration: c.duration.toFixed(2),
+            timeAgo: this.viewService.timeAgo(c.startTime)
+        })).join('');
+        return `
+            <div class="bg-gray-50 rounded-lg border border-gray-200 p-4 mb-4">
+                <h2 class="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Cache Operations (${cache.length})</h2>
+                <div class="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Op</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Key</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Result</th>
+                                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
     }
 };
 exports.TemplateBuilderService = TemplateBuilderService;

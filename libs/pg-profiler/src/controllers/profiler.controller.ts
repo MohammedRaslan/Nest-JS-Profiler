@@ -123,4 +123,14 @@ export class ProfilerController {
         res.header('Content-Type', 'text/html');
         res.send(html);
     }
+
+    @Get('view/cache')
+    async listCache(@Res() res: Response) {
+        const cacheOps = await this.profilerService.getCacheList();
+        const content = this.templateBuilder.buildCacheList(cacheOps);
+        const html = this.viewService.renderWithLayout('Cache Operations', content, 'cache');
+
+        res.header('Content-Type', 'text/html');
+        res.send(html);
+    }
 }

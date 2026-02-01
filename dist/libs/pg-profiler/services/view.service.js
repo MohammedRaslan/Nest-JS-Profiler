@@ -74,10 +74,14 @@ let ViewService = class ViewService {
             queriesActive: activeTab === 'queries' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white',
             logsActive: activeTab === 'logs' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white',
             entitiesActive: activeTab === 'entities' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white',
+            routesActive: activeTab === 'routes' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white',
+            cacheActive: activeTab === 'cache' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white',
             requestsIconClass: activeTab === 'requests' ? 'text-indigo-300' : 'text-slate-400 group-hover:text-white',
             queriesIconClass: activeTab === 'queries' ? 'text-indigo-300' : 'text-slate-400 group-hover:text-white',
             logsIconClass: activeTab === 'logs' ? 'text-indigo-300' : 'text-slate-400 group-hover:text-white',
             entitiesIconClass: activeTab === 'entities' ? 'text-indigo-300' : 'text-slate-400 group-hover:text-white',
+            routesIconClass: activeTab === 'routes' ? 'text-indigo-300' : 'text-slate-400 group-hover:text-white',
+            cacheIconClass: activeTab === 'cache' ? 'text-indigo-300' : 'text-slate-400 group-hover:text-white',
         };
         layout = this.interpolate(layout, data);
         return layout;
@@ -163,6 +167,26 @@ let ViewService = class ViewService {
         if (level === 'warn')
             return 'text-yellow-800 bg-yellow-50 ring-yellow-600/20';
         return 'text-gray-600 bg-gray-50 ring-gray-500/10';
+    }
+    getCacheOperationBadge(op) {
+        const badges = {
+            'get': 'bg-blue-100 text-blue-800',
+            'set': 'bg-purple-100 text-purple-800',
+            'del': 'bg-red-100 text-red-800',
+            'reset': 'bg-orange-100 text-orange-800',
+        };
+        const classes = badges[op] || 'bg-gray-100 text-gray-800';
+        return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full uppercase ${classes}">${op}</span>`;
+    }
+    getCacheResultBadge(result) {
+        const badges = {
+            'hit': 'bg-green-100 text-green-800',
+            'miss': 'bg-red-100 text-red-800',
+            'success': 'bg-green-100 text-green-800',
+            'fail': 'bg-red-100 text-red-800',
+        };
+        const classes = badges[result] || 'bg-gray-100 text-gray-800';
+        return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full uppercase ${classes}">${result}</span>`;
     }
 };
 exports.ViewService = ViewService;

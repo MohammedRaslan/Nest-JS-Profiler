@@ -75,6 +75,7 @@ let ProfilerService = ProfilerService_1 = class ProfilerService {
             startTime: Date.now(),
             queries: [],
             logs: [],
+            cache: [],
             timestamp: Date.now(),
         };
         this.als.enterWith(profile);
@@ -136,6 +137,18 @@ let ProfilerService = ProfilerService_1 = class ProfilerService {
             this.storage.save(profile);
         }
     }
+    addCache(cacheProfile) {
+        const profile = this.als.getStore();
+        if (profile) {
+            if (!profile.cache)
+                profile.cache = [];
+            profile.cache.push(cacheProfile);
+            this.storage.save(profile);
+        }
+        else {
+            this.logger.debug(`Profiler: Skipping cache capture for ${cacheProfile.key} - No active request context (ALS is empty).`);
+        }
+    }
     getCurrentProfile() {
         return this.als.getStore();
     }
@@ -182,6 +195,17 @@ let ProfilerService = ProfilerService_1 = class ProfilerService {
     }
     async getProfileJson(id) {
         return Promise.resolve(this.storage.get(id));
+    }
+    async getCacheList() {
+        const profiles = await Promise.resolve(this.storage.all());
+        const allOps = profiles.flatMap(p => (p.cache || []).map(c => ({
+            ...c,
+            requestId: p.id,
+            requestUrl: p.url,
+            requestMethod: p.method
+        })));
+        allOps.sort((a, b) => b.startTime - a.startTime);
+        return allOps;
     }
 };
 exports.ProfilerService = ProfilerService;

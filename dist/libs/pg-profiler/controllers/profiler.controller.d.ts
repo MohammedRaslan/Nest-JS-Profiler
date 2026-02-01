@@ -28,4 +28,5 @@ export declare class ProfilerController {
     listLogs(res: Response, page?: number): Promise<void>;
     listEntities(res: Response): Promise<void>;
     listRoutes(res: Response): Promise<void>;
+    listCache(res: Response): Promise<void>;
 }

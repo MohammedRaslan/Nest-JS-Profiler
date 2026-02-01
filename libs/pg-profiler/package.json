@@ -19,6 +19,16 @@
         },
         "mysql2": {
             "optional": true
+        },
+        "@nestjs/cache-manager": {
+            "optional": true
+        },
+        "cache-manager": {
+            "optional": true
         }
+    },
+    "devDependencies": {
+        "@nestjs/cache-manager": "^2.0.0",
+        "cache-manager": "^5.0.0"
     }
 }
