@@ -163,8 +163,8 @@ export class ProfilerService {
             }))
         );
 
-        // Sort newest first
-        allQueries.sort((a, b) => b.startTime - a.startTime);
+        // Sort duration descending (longest first)
+        allQueries.sort((a, b) => b.duration - a.duration);
 
         return allQueries;
     }

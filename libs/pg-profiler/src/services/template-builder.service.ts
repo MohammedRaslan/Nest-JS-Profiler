@@ -122,7 +122,7 @@ export class TemplateBuilderService {
             requestMethod: q.requestMethod,
             requestUrl: q.requestUrl,
             timeAgo: this.viewService.timeAgo(q.startTime)
-        })).join('') || '<tr><td colspan="4" class="p-8 text-center text-gray-500">No queries found.</td></tr>';
+        })).join('') || '<tr><td colspan="3" class="p-8 text-center text-gray-500">No queries found.</td></tr>';
 
         return this.viewService.render('queries', { rows });
     }
