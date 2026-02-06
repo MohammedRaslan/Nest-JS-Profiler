@@ -1,0 +1,25 @@
+<tr class="hover:bg-gray-50 border-b border-gray-100">
+    <td class="p-4 align-middle">
+        {{{ methodBadge }}}
+    </td>
+    <td class="p-4 align-middle w-full">
+        <a href="/__profiler/{{ id }}"
+            class="text-indigo-600 hover:text-indigo-900 font-medium block truncate max-w-xl transition-colors">
+            {{ url }}
+        </a>
+    </td>
+    <td class="p-4 align-middle whitespace-nowrap">
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium {{{ statusClass }}}">
+            {{ statusCode }}
+        </span>
+    </td>
+    <td class="p-4 align-middle text-gray-500 text-sm whitespace-nowrap">
+        {{ duration }}ms
+    </td>
+    <td class="p-4 align-middle text-gray-500 text-sm whitespace-nowrap text-center">
+        {{{ queriesCount }}}
+    </td>
+    <td class="p-4 align-middle text-gray-400 text-xs whitespace-nowrap text-right">
+        {{ timeAgo }}
+    </td>
+</tr>

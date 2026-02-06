@@ -1,0 +1,72 @@
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+        <div class="flex items-center space-x-4">
+            <h2 class="font-semibold text-gray-700">HTTP Requests</h2>
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <input id="search" name="search"
+                    class="block w-64 pl-9 pr-3 py-1.5 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    placeholder="Search requests..." type="search">
+            </div>
+        </div>
+        <span class="text-xs text-gray-500 bg-white border border-gray-200 px-2 py-1 rounded-md">Last 100
+            requests</span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse" id="requestsTable">
+            <thead class="bg-gray-50 text-gray-500 uppercase text-xs tracking-wider font-medium">
+                <tr>
+                    <th class="p-4 border-b border-gray-200 w-16">Method</th>
+                    <th class="p-4 border-b border-gray-200">URI</th>
+                    <th class="p-4 border-b border-gray-200 w-24">Status</th>
+                    <th class="p-4 border-b border-gray-200 w-24">Duration</th>
+                    <th class="p-4 border-b border-gray-200 w-24 text-center">Queries</th>
+                    <th class="p-4 border-b border-gray-200 w-32 text-right cursor-pointer hover:bg-gray-100 select-none group"
+                        onclick="toggleSort()">
+                        <div class="flex items-center justify-end gap-1">
+                            Happened
+                            <div class="flex flex-col text-gray-400">
+                                <svg id="sortAsc" class="w-2 h-2 opacity-100" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M7 14l5-5 5 5z" />
+                                </svg>
+                                <svg id="sortDesc" class="w-2 h-2 opacity-50" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M7 10l5 5 5-5z" />
+                                </svg>
+                            </div>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100" id="tableBody">
+                {{{ rows }}}
+            </tbody>
+        </table>
+    </div>
+    {{{ emptyState }}}
+
+    <script>
+        function toggleSort() {
+            const table = document.getElementById('tableBody');
+            const rows = Array.from(table.rows);
+            rows.reverse().forEach(row => table.appendChild(row));
+
+            const asc = document.getElementById('sortAsc');
+            const desc = document.getElementById('sortDesc');
+
+            if (asc.classList.contains('text-indigo-600')) {
+                asc.classList.remove('text-indigo-600', 'opacity-100'); asc.classList.add('opacity-50');
+                desc.classList.add('text-indigo-600', 'opacity-100'); desc.classList.remove('opacity-50');
+            } else {
+                asc.classList.add('text-indigo-600', 'opacity-100'); asc.classList.remove('opacity-50');
+                desc.classList.remove('text-indigo-600', 'opacity-100'); desc.classList.add('opacity-50');
+            }
+        }
+    </script>
+
+
+</div>
