@@ -1,20 +1,32 @@
 {
   "$schema": "https://json.schemastore.org/nest-cli",
   "collection": "@nestjs/schematics",
-  "sourceRoot": "src",
+  "sourceRoot": ".",
+  "entryFile": "src/main",
   "compilerOptions": {
-    "deleteOutDir": true
+    "deleteOutDir": true,
+    "assets": [
+      {
+        "include": "libs/nestjs-profiler/src/views/**/*.html",
+        "watchAssets": true
+      },
+      {
+        "include": "libs/nestjs-profiler/src/assets/**/*",
+        "watchAssets": true
+      }
+    ]
   },
   "projects": {
-    "pg-profiler": {
+    "nestjs-profiler": {
       "type": "library",
-      "root": "libs/pg-profiler",
+      "root": "libs/nestjs-profiler",
       "entryFile": "index",
-      "sourceRoot": "libs/pg-profiler/src",
+      "sourceRoot": "libs/nestjs-profiler/src",
       "compilerOptions": {
-        "tsConfigPath": "libs/pg-profiler/tsconfig.lib.json",
+        "tsConfigPath": "libs/nestjs-profiler/tsconfig.lib.json",
         "assets": [
-          "**/*.html"
+          "**/*.html",
+          "assets/**"
         ],
         "watchAssets": true
       }

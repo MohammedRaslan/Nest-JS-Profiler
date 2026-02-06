@@ -1,0 +1,19 @@
+<tr class="hover:bg-gray-50 border-b border-gray-100">
+    <td class="p-4 align-middle whitespace-nowrap">
+        <span
+            class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset {{{ levelColor }}}">{{
+            level }}</span>
+    </td>
+    <td class="p-4 align-middle">
+        <span class="text-sm text-gray-900 break-all">{{ message }}</span>
+        {{{ context }}}
+    </td>
+    <td class="p-4 align-middle whitespace-nowrap">
+        <a href="/__profiler/{{ requestId }}" class="text-xs text-blue-500 hover:underline">
+            {{ requestMethod }} {{ requestUrl }}
+        </a>
+    </td>
+    <td class="p-4 align-middle text-gray-400 text-xs whitespace-nowrap text-right">
+        {{ timeAgo }}
+    </td>
+</tr>
