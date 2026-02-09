@@ -19,7 +19,6 @@ export class MongoCollector implements OnModuleInit {
         }
 
         try {
-            // Try to get mongodb from options or require it
             this.mongodb = this.options.mongoDriver || require('mongodb');
             this.patchMongo();
             this.logger.log('MongoCollector initialized: Patching mongodb driver');
@@ -45,9 +44,9 @@ export class MongoCollector implements OnModuleInit {
         }
 
         const self = this;
-        const Collection = this.mongodb.Collection;
+        const collection = this.mongodb.Collection;
 
-        // Operations to intercept
+
         const operations = [
             'find', 'findOne', 'insertOne', 'insertMany',
             'updateOne', 'updateMany', 'deleteOne', 'deleteMany',
@@ -57,13 +56,13 @@ export class MongoCollector implements OnModuleInit {
         this.logger.debug(`Patching MongoDB Collection methods: ${operations.join(', ')}`);
 
         operations.forEach(opName => {
-            const originalMethod = Collection.prototype[opName];
+            const originalMethod = collection.prototype[opName];
             if (!originalMethod) {
                 this.logger.warn(`Could not find method ${opName} on Collection.prototype`);
                 return;
             }
 
-            Collection.prototype[opName] = function (...args: any[]) {
+            collection.prototype[opName] = function (...args: any[]) {
                 if (process.env.PROFILER_DEBUG) {
                     self.logger.debug(`Mongo Intercepted: ${opName}`);
                 }
@@ -71,30 +70,17 @@ export class MongoCollector implements OnModuleInit {
                 const collectionName = this.collectionName || 'unknown';
                 const dbName = this.s?.db?.databaseName || this.dbName || 'unknown';
 
-                // Extract connection info
                 const client = this.s?.db?.s?.client;
                 const host = client?.s?.options?.hosts?.[0] || 'localhost:27017';
                 const connectionName = `${dbName}@${host}`;
 
-                // Extract filter/query from args
                 let filter: any = {};
                 let operation = opName;
 
-                // Different operations have different arg structures
-                if (['find', 'findOne', 'deleteOne', 'deleteMany', 'countDocuments'].includes(opName)) {
-                    filter = args[0] || {};
-                } else if (['updateOne', 'updateMany', 'replaceOne'].includes(opName)) {
-                    filter = args[0] || {};
-                } else if (['insertOne', 'insertMany'].includes(opName)) {
-                    filter = { document: args[0] };
-                } else if (opName === 'aggregate') {
-                    filter = { pipeline: args[0] || [] };
-                }
+                filter = self.buildFilter(opName, args);
 
-                // Call original method
                 const result = originalMethod.apply(this, args);
 
-                // Handle promise-based results
                 if (result && typeof result.then === 'function') {
                     return result.then((res: any) => {
                         const endTime = Date.now();
@@ -107,7 +93,6 @@ export class MongoCollector implements OnModuleInit {
                     });
                 }
 
-                // Handle cursor-based results (find returns cursor)
                 if (result && result.toArray) {
                     const originalToArray = result.toArray;
                     result.toArray = function () {
@@ -129,6 +114,54 @@ export class MongoCollector implements OnModuleInit {
         });
     }
 
+    private handleQueryOperation(opName: string, args: any[]): any | null {
+        const operations = [
+            'find',
+            'findOne',
+            'deleteOne',
+            'deleteMany',
+            'countDocuments',
+            'updateOne',
+            'updateMany',
+            'replaceOne',
+        ];
+
+        if (!operations.includes(opName)) {
+            return null;
+        }
+
+        return args[0] || {};
+    }
+
+    private handleInsertOperation(opName: string, args: any[]): any | null {
+        if (!['insertOne', 'insertMany'].includes(opName)) {
+            return null;
+        }
+
+        return {
+            document: args[0],
+        };
+    }
+
+    private handleAggregateOperation(opName: string, args: any[]): any | null {
+        if (opName !== 'aggregate') {
+            return null;
+        }
+
+        return {
+            pipeline: args[0] || [],
+        };
+    }
+
+    private buildFilter(opName: string, args: any[]): any {
+        return (
+            this.handleQueryOperation(opName, args) ??
+            this.handleInsertOperation(opName, args) ??
+            this.handleAggregateOperation(opName, args) ??
+            {}
+        );
+    }
+
     private captureQuery(
         operation: string,
         collection: string,
@@ -140,25 +173,16 @@ export class MongoCollector implements OnModuleInit {
         error?: any
     ) {
         try {
-            // Format query as JSON string
             const queryText = JSON.stringify({
                 collection,
                 operation,
                 filter
             }, null, 2);
 
-            // Extract result count
-            let rowCount: number | undefined;
-            if (result) {
-                if (result.docs) rowCount = result.docs.length;
-                else if (result.insertedCount) rowCount = result.insertedCount;
-                else if (result.modifiedCount) rowCount = result.modifiedCount;
-                else if (result.deletedCount) rowCount = result.deletedCount;
-                else if (typeof result === 'number') rowCount = result;
-            }
+            const rowCount = this.getRowCount(result);
 
             const queryProfile: QueryProfile = {
-                sql: queryText, // Store formatted JSON in sql field
+                sql: queryText,
                 query: queryText,
                 database: 'mongodb',
                 operation,
@@ -172,10 +196,28 @@ export class MongoCollector implements OnModuleInit {
 
             this.profiler.addQuery(queryProfile);
         } catch (e) {
-            // Silently fail to avoid breaking app
             if (process.env.PROFILER_DEBUG) {
                 this.logger.error('Failed to capture MongoDB query', e);
             }
         }
+    }
+
+    private rowCountResolvers: Array<(result: any) => number | null> = [
+        (r) => (typeof r === 'number' ? r : null),
+        (r) => (Array.isArray(r.docs) ? r.docs.length : null),
+        (r) => r.insertedCount ?? null,
+        (r) => r.modifiedCount ?? null,
+        (r) => r.deletedCount ?? null,
+    ];
+
+    private getRowCount(result: any): number {
+        for (const resolver of this.rowCountResolvers) {
+            const value = resolver(result);
+            if (value !== null && value !== undefined) {
+                return value;
+            }
+        }
+
+        return 0;
     }
 }

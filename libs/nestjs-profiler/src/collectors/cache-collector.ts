@@ -11,7 +11,6 @@ export class CacheCollector implements OnModuleInit {
     constructor(
         private readonly profiler: ProfilerService,
         @Inject('PROFILER_OPTIONS') private readonly options: ProfilerOptions,
-        // We use the string literal 'CACHE_MANAGER' to avoid a hard runtime dependency on @nestjs/cache-manager
         @Optional() @Inject('CACHE_MANAGER') private readonly cacheManager: Cache
     ) { }
 
@@ -30,13 +29,21 @@ export class CacheCollector implements OnModuleInit {
     }
 
     private wrapCacheManager() {
-        const self = this;
-        // Cast to any to allow monkey-patching methods which might be readonly in the interface
         const cm = this.cacheManager as any;
-
         this.logger.log(`CacheCollector: Inspecting CacheManager keys: ${Object.keys(cm)}`);
 
-        // Wrap 'get'
+        if (cm.store && cm.store.get) {
+            this.logger.log('CacheCollector: Underlying store found: ' + (cm.store.name || cm.store.constructor?.name));
+        }
+
+        this.wrapGet(cm);
+        this.wrapSet(cm);
+        this.wrapDel(cm);
+        this.wrapReset(cm);
+    }
+
+    private wrapGet(cm: any) {
+        const self = this;
         const originalGet = cm.get;
         if (originalGet) {
             this.logger.log('CacheCollector: Wrapping "get" method');
@@ -57,14 +64,10 @@ export class CacheCollector implements OnModuleInit {
         } else {
             this.logger.warn('CacheCollector: "get" method not found on CacheManager');
         }
+    }
 
-        // Wrap 'store.get' if available (sometimes used directly by cache-manager v5)
-        if (cm.store && cm.store.get) {
-            // We could wrap store directly, but usually wrapping the facade is enough.
-            this.logger.log('CacheCollector: Underlying store found: ' + (cm.store.name || cm.store.constructor?.name));
-        }
-
-        // Wrap 'set'
+    private wrapSet(cm: any) {
+        const self = this;
         const originalSet = cm.set;
         if (originalSet) {
             this.logger.log('CacheCollector: Wrapping "set" method');
@@ -86,8 +89,10 @@ export class CacheCollector implements OnModuleInit {
         } else {
             this.logger.warn('CacheCollector: "set" method not found on CacheManager');
         }
+    }
 
-        // Wrap 'del'
+    private wrapDel(cm: any) {
+        const self = this;
         const originalDel = cm.del;
         if (originalDel) {
             cm.del = async function (...args: any[]) {
@@ -105,8 +110,10 @@ export class CacheCollector implements OnModuleInit {
                 }
             };
         }
+    }
 
-        // Wrap 'reset'
+    private wrapReset(cm: any) {
+        const self = this;
         const originalReset = cm.reset;
         if (originalReset) {
             cm.reset = async function (...args: any[]) {
@@ -127,7 +134,6 @@ export class CacheCollector implements OnModuleInit {
 
     private captureOperation(operation: any, key: string, result: any, startTime: number, endTime: number, ttl?: number) {
         try {
-            // Determine store name/type (best effort)
             let storeName = 'unknown';
             const cm = this.cacheManager as any;
 
@@ -146,7 +152,6 @@ export class CacheCollector implements OnModuleInit {
                 startTime,
             };
 
-            // Debug log to check if we are capturing
             this.logger.debug(`CacheCollector: Captured ${operation} on ${key}. Duration: ${profile.duration}ms`);
 
             this.profiler.addCache(profile);
