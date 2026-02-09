@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Inject, Res, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Param, Query, Inject, Res, NotFoundException, HttpStatus } from '@nestjs/common';
 import type { Response } from 'express';
 import { ProfilerService } from '../services/profiler.service';
 import { ViewService } from '../services/view.service';
@@ -34,10 +34,8 @@ export class ProfilerController {
 
     @Get('debug/test-query')
     async debugQuery() {
-        // Manual query test
         const { Client } = require('pg');
         const client = new Client({
-            // Default connection
             host: process.env.DB_HOST || 'localhost',
             port: 5432,
             user: process.env.DB_USER || 'postgres',
@@ -66,7 +64,7 @@ export class ProfilerController {
             const content = this.templateBuilder.buildNotFound(id);
             const html = this.viewService.renderWithLayout('Profile Not Found', content);
             res.header('Content-Type', 'text/html');
-            res.status(404).send(html);
+            res.status(HttpStatus.NOT_FOUND).send(html);
             return;
         }
 
@@ -136,10 +134,10 @@ export class ProfilerController {
 
     @Get('assets/:file')
     async serveAsset(@Param('file') file: string, @Res() res: Response) {
-        const fs = require('fs');
-        const path = require('path');
-        const assetsPath = path.join(__dirname, '..', 'assets');
-        const filePath = path.join(assetsPath, file);
+      const fs = require('fs');
+      const path = require('path');
+      const assetsPath = path.join(__dirname, '..', 'assets');
+      const filePath = path.join(assetsPath, file);
 
         if (fs.existsSync(filePath)) {
             const ext = path.extname(file);
@@ -155,7 +153,24 @@ export class ProfilerController {
             res.header('Cache-Control', 'public, max-age=86400');
             fs.createReadStream(filePath).pipe(res);
         } else {
-            res.status(404).send('Asset not found');
+            res.status(HttpStatus.NOT_FOUND).send('Asset not found');
         }
+  }
+
+  @Get('js/:file')
+  async serveJs(@Param('file') file: string, @Res() res: Response) {
+    const fs = require('fs');
+    const path = require('path');
+    const jsPath = path.join(__dirname, '..', 'views', 'js');
+    const filePath = path.join(jsPath, file);
+
+    if (fs.existsSync(filePath)) {
+      res.header('Content-Type', 'text/javascript');
+      // Cache for 1 day
+      res.header('Cache-Control', 'public, max-age=86400');
+      fs.createReadStream(filePath).pipe(res);
+    } else {
+      res.status(HttpStatus.NOT_FOUND).send('Script not found');
     }
+  }
 }

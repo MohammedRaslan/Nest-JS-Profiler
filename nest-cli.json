@@ -11,6 +11,10 @@
         "watchAssets": true
       },
       {
+        "include": "libs/nestjs-profiler/src/views/js/**/*",
+        "watchAssets": true
+      },
+      {
         "include": "libs/nestjs-profiler/src/assets/**/*",
         "watchAssets": true
       }
@@ -26,6 +30,7 @@
         "tsConfigPath": "libs/nestjs-profiler/tsconfig.lib.json",
         "assets": [
           "**/*.html",
+          "views/js/**",
           "assets/**"
         ],
         "watchAssets": true

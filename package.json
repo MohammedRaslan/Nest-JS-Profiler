@@ -1,8 +1,8 @@
 {
   "name": "nestjs-profiler",
-  "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "version": "1.0.0",
+  "description": "A NestJS module for profiling HTTP requests, database queries, and cache operations. Inspired by Symfony Profiler, it provides a web-based dashboard to inspect request duration, executed queries, log messages, and explain plans for slow queries.",
+  "author": "Mohamed Raslan",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
@@ -63,15 +63,16 @@
       "json",
       "ts"
     ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
+    "rootDir": ".",
+    "testRegex": "(/|^)test/.*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "libs/nestjs-profiler/src/**/*.(t|j)s",
+      "src/**/*.(t|j)s"
     ],
-    "coverageDirectory": "../coverage",
+    "coverageDirectory": "coverage",
     "testEnvironment": "node"
   }
 }

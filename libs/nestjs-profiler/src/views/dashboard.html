@@ -48,25 +48,7 @@
         </table>
     </div>
     {{{ emptyState }}}
-
-    <script>
-        function toggleSort() {
-            const table = document.getElementById('tableBody');
-            const rows = Array.from(table.rows);
-            rows.reverse().forEach(row => table.appendChild(row));
-
-            const asc = document.getElementById('sortAsc');
-            const desc = document.getElementById('sortDesc');
-
-            if (asc.classList.contains('text-indigo-600')) {
-                asc.classList.remove('text-indigo-600', 'opacity-100'); asc.classList.add('opacity-50');
-                desc.classList.add('text-indigo-600', 'opacity-100'); desc.classList.remove('opacity-50');
-            } else {
-                asc.classList.add('text-indigo-600', 'opacity-100'); asc.classList.remove('opacity-50');
-                desc.classList.remove('text-indigo-600', 'opacity-100'); desc.classList.add('opacity-50');
-            }
-        }
-    </script>
+    <script src="/__profiler/js/dashboard.js"></script>
 
 
 </div>

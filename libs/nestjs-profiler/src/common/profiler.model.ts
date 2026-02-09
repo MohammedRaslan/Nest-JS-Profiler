@@ -1,19 +1,19 @@
 export interface QueryProfile {
-    sql: string; // For PostgreSQL or general query text
-    query?: string; // Alias for sql, used for MongoDB JSON representation
-    database?: 'postgres' | 'mongodb' | 'mysql'; // Database type
-    operation?: string; // MongoDB operation type: 'find', 'insertOne', 'updateMany', etc.
-    filter?: any; // MongoDB query filter
+    sql: string;
+    query?: string;
+    database?: 'postgres' | 'mongodb' | 'mysql';
+    operation?: string;
+    filter?: any;
     params?: any[];
     duration: number; // ms
     startTime: number;
     rowCount?: number;
     error?: string;
     explainPlan?: any;
-    connection?: string; // e.g., "mydb@localhost" or "mydb@localhost:27017"
-    tags?: string[]; // e.g. 'slow', 'n+1', 'seq-scan'
-    duplicatedCount?: number; // How many times this identical query was run
-    planType?: string; // e.g. 'Seq Scan', 'Index Scan', 'COLLSCAN'
+    connection?: string;
+    tags?: string[];
+    duplicatedCount?: number;
+    planType?: string;
 }
 
 export interface LogProfile {
@@ -25,13 +25,13 @@ export interface LogProfile {
 
 export interface CacheProfile {
     key: string;
-    store: string; // e.g., 'redis', 'memory'
+    store: string;
     operation: 'get' | 'set' | 'del' | 'reset' | 'unknown';
     result: 'hit' | 'miss' | 'success' | 'fail' | null;
     ttl?: number;
     duration: number; // ms
     startTime: number;
-    value?: any; // Value metadata or masked value
+    value?: any;
 }
 
 export interface RequestProfile {
@@ -64,7 +64,7 @@ export interface RequestProfile {
     };
     timings?: {
         total: number;
-        middleware: number; // Time from T0 to Interceptor
-        handler: number; // Time from Interceptor to End
+        middleware: number;
+        handler: number;
     };
 }

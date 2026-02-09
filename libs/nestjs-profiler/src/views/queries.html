@@ -33,33 +33,5 @@
             </tbody>
         </table>
     </div>
+    <script src="/__profiler/js/queries.js"></script>
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        // Duration Sorting
-        const durationHeader = document.getElementById('duration-header');
-        const tbody = document.querySelector('tbody');
-        let durationAsc = false; // Default is descending (from backend)
-
-        if (durationHeader && tbody) {
-            durationHeader.addEventListener('click', () => {
-                durationAsc = !durationAsc;
-                const rows = Array.from(tbody.querySelectorAll('tr'));
-
-                rows.sort((a, b) => {
-                    const durA = parseFloat(a.querySelector('[data-duration]')?.dataset.duration || 0);
-                    const durB = parseFloat(b.querySelector('[data-duration]')?.dataset.duration || 0);
-
-                    return durationAsc ? durA - durB : durB - durA;
-                });
-
-                rows.forEach(row => tbody.appendChild(row));
-
-                // Update Arrow indication
-                const arrow = durationHeader.querySelector('span');
-                if (arrow) arrow.textContent = durationAsc ? '↑' : '↓';
-            });
-        }
-    });
-</script>
