@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build && copyfiles -u 1 libs/nestjs-profiler/src/assets/**/* dist/assets",
-    "build:lib": "nest build pg-profiler && cp libs/nestjs-profiler/package.json dist/libs/pg-profiler/ && node -e \"const pkg=require('./dist/libs/pg-profiler/package.json'); pkg.main='./index.js'; pkg.types='./index.d.ts'; require('fs').writeFileSync('./dist/libs/pg-profiler/package.json', JSON.stringify(pkg, null, 2))\"",
+    "build:lib": "nest build nestjs-profiler && cp libs/nestjs-profiler/package.json dist/libs/nestjs-profiler/ && cp -r libs/nestjs-profiler/src/assets dist/libs/nestjs-profiler/src/ && node -e \"const pkg=require('./dist/libs/nestjs-profiler/package.json'); pkg.main='./src/index.js'; pkg.types='./src/index.d.ts'; require('fs').writeFileSync('./dist/libs/nestjs-profiler/package.json', JSON.stringify(pkg, null, 2))\"",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",

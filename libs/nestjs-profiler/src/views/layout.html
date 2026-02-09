@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{{ title }}} - NestJS Profiler</title>
-    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico?v=1">
+    <link rel="icon" type="image/x-icon" href="/__profiler/assets/favicon.ico?v=1">
     <!-- Tailwind CSS from CDN for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -52,7 +52,7 @@
         <div class="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col fixed h-full inset-y-0 z-10">
             <div class="flex items-center px-6 h-16 bg-slate-800">
                 <a href="/__profiler" class="flex items-center gap-3">
-                    <img src="/assets/logo.png" alt="NestJS Profiler" class="h-8 w-auto">
+                    <img src="/__profiler/assets/logo.png" alt="NestJS Profiler" class="h-8 w-auto">
                     <span class="text-white font-bold text-lg tracking-tight">NestJS Profiler</span>
                 </a>
             </div>
@@ -141,20 +141,100 @@
             <script>
                 document.addEventListener('DOMContentLoaded', () => {
                     const searchInput = document.getElementById('search');
-                    if (!searchInput) return;
+                    if (searchInput) {
+                        searchInput.addEventListener('input', (e) => {
+                            const term = e.target.value.toLowerCase();
+                            const rows = document.querySelectorAll('tbody tr');
 
-                    searchInput.addEventListener('input', (e) => {
-                        const term = e.target.value.toLowerCase();
-                        const rows = document.querySelectorAll('tbody tr');
+                            rows.forEach(row => {
+                                const text = row.textContent.toLowerCase();
+                                if (text.includes(term)) {
+                                    row.style.display = '';
+                                } else {
+                                    row.style.display = 'none';
+                                }
+                            });
+                        });
+                    }
 
-                        rows.forEach(row => {
-                            const text = row.textContent.toLowerCase();
-                            if (text.includes(term)) {
-                                row.style.display = '';
-                            } else {
-                                row.style.display = 'none';
+                    // SPA Navigation
+                    const mainContent = document.querySelector('main');
+                    const navLinks = document.querySelectorAll('nav a');
+                    const sidebar = document.querySelector('nav');
+
+                    const updateActiveLink = (path) => {
+                        navLinks.forEach(link => {
+                            // Reset classes
+                            link.className = 'flex items-center px-2 py-2 text-sm font-medium rounded-md group text-slate-300 hover:bg-slate-800 hover:text-white';
+                            const svg = link.querySelector('svg');
+                            if (svg) svg.setAttribute('class', 'mr-3 flex-shrink-0 h-6 w-6 text-slate-400 group-hover:text-white');
+
+                            // Check match
+                            const href = link.getAttribute('href');
+                            if (href === path) {
+                                link.className = 'flex items-center px-2 py-2 text-sm font-medium rounded-md group bg-indigo-600 text-white';
+                                if (svg) svg.setAttribute('class', 'mr-3 flex-shrink-0 h-6 w-6 text-indigo-300');
                             }
                         });
+                    };
+
+                    const navigate = async (url) => {
+                        try {
+                            // Show loading state if needed
+                            mainContent.style.opacity = '0.5';
+
+                            const response = await fetch(url);
+                            const text = await response.text();
+
+                            // Parse HTML
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(text, 'text/html');
+
+                            // Replace Main Content
+                            const newContent = doc.querySelector('main').innerHTML;
+                            mainContent.innerHTML = newContent;
+                            mainContent.style.opacity = '1';
+
+                            // Update Title
+                            document.title = doc.title;
+
+                            // Re-attach listeners (like search)
+                            const newSearchInput = document.getElementById('search');
+                            if (newSearchInput) {
+                                newSearchInput.addEventListener('input', (e) => {
+                                    const term = e.target.value.toLowerCase();
+                                    const rows = document.querySelectorAll('tbody tr');
+                                    rows.forEach(row => {
+                                        const text = row.textContent.toLowerCase();
+                                        row.style.display = text.includes(term) ? '' : 'none';
+                                    });
+                                });
+                            }
+
+                            // Update Active State
+                            updateActiveLink(url);
+
+                        } catch (e) {
+                            console.error('Navigation failed', e);
+                            window.location.href = url; // Fallback
+                        }
+                    };
+
+                    document.body.addEventListener('click', (e) => {
+                        const link = e.target.closest('a');
+                        if (link && link.href && link.href.includes('/__profiler') && !link.getAttribute('target')) {
+                            const url = new URL(link.href);
+                            if (url.origin === window.location.origin) {
+                                e.preventDefault();
+                                const path = url.pathname + url.search;
+                                history.pushState({}, '', path);
+                                navigate(path);
+                            }
+                        }
+                    });
+
+                    window.addEventListener('popstate', () => {
+                        navigate(window.location.pathname + window.location.search);
                     });
                 });
             </script>

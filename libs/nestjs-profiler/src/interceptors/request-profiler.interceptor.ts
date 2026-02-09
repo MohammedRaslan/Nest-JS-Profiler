@@ -18,8 +18,6 @@ export class RequestProfilerInterceptor implements NestInterceptor {
             this.logger.debug(`Starting profile for ${req.method} ${req.url}`);
         }
 
-        // Only profile HTTP requests. Keep favicon and OPTIONS ignored.
-        // Exclude /__profiler routes from appearing in the dashboard
         if (!req || !res || req.url.startsWith('/__profiler') || req.url.includes('favicon.ico') || req.method === 'OPTIONS') {
             return next.handle();
         }
@@ -40,11 +38,7 @@ export class RequestProfilerInterceptor implements NestInterceptor {
             profile.url = req.originalUrl || req.url;
             profile.controller = context.getClass().name;
             profile.handler = context.getHandler().name;
-
-            // Capture Headers (sanitize sensitive)
             profile.requestHeaders = this.sanitizeHeaders(req.headers);
-
-            // Capture Body
             profile.requestBody = req.body;
         }
 
@@ -61,7 +55,6 @@ export class RequestProfilerInterceptor implements NestInterceptor {
                         const status = err.status || err.statusCode || 500;
                         profile.statusCode = status;
 
-                        // Capture Exception
                         profile.exception = {
                             message: err.message,
                             stack: err.stack
@@ -93,7 +86,6 @@ export class RequestProfilerInterceptor implements NestInterceptor {
             handler: Math.max(0, handlerDuration)
         };
 
-        // Override duration with the total time from T0
         profile.duration = totalDuration;
 
         this.profiler.endRequest(profile);

@@ -133,4 +133,29 @@ export class ProfilerController {
         res.header('Content-Type', 'text/html');
         res.send(html);
     }
+
+    @Get('assets/:file')
+    async serveAsset(@Param('file') file: string, @Res() res: Response) {
+        const fs = require('fs');
+        const path = require('path');
+        const assetsPath = path.join(__dirname, '..', 'assets');
+        const filePath = path.join(assetsPath, file);
+
+        if (fs.existsSync(filePath)) {
+            const ext = path.extname(file);
+            let contentType = 'text/plain';
+            if (ext === '.png') contentType = 'image/png';
+            if (ext === '.ico') contentType = 'image/x-icon';
+            if (ext === '.svg') contentType = 'image/svg+xml';
+            if (ext === '.css') contentType = 'text/css';
+            if (ext === '.js') contentType = 'text/javascript';
+
+            res.header('Content-Type', contentType);
+            // Cache for 1 day
+            res.header('Cache-Control', 'public, max-age=86400');
+            fs.createReadStream(filePath).pipe(res);
+        } else {
+            res.status(404).send('Asset not found');
+        }
+    }
 }

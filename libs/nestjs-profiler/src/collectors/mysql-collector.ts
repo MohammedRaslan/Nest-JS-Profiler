@@ -19,7 +19,6 @@ export class MysqlCollector implements OnModuleInit {
         }
 
         try {
-            // Try to get mysql2 from options or require it
             this.mysql = this.options.mysqlDriver || require('mysql2');
             this.patchMysql();
             this.logger.log('MysqlCollector initialized: Patching mysql2 driver');
@@ -50,23 +49,16 @@ export class MysqlCollector implements OnModuleInit {
         Connection.prototype.query = function (...args: any[]) {
             const startTime = Date.now();
 
-            // Extract connection info
             const config = this.config || {};
             const dbName = config.database || 'unknown';
             const host = config.host || 'localhost';
             const port = config.port || 3306;
             const connectionName = `${dbName}@${host}:${port}`;
 
-            // Extract SQL and params
             let sql = '';
             let params: any[] = [];
             let callback: any;
 
-            // mysql2 query can be called in multiple ways:
-            // query(sql, callback)
-            // query(sql, values, callback)
-            // query(options, callback)
-            // query(options, values, callback)
 
             if (typeof args[0] === 'string') {
                 sql = args[0];
@@ -82,12 +74,10 @@ export class MysqlCollector implements OnModuleInit {
                 callback = args[1];
             }
 
-            // Wrap callback to capture results
             const wrappedCallback = function (err: any, results: any, fields: any) {
                 const endTime = Date.now();
                 const duration = endTime - startTime;
 
-                // Extract row count
                 let rowCount: number | undefined;
                 if (results) {
                     if (Array.isArray(results)) {
@@ -110,13 +100,11 @@ export class MysqlCollector implements OnModuleInit {
 
                 self.profiler.addQuery(queryProfile);
 
-                // Call original callback if provided
                 if (callback) {
                     callback(err, results, fields);
                 }
             };
 
-            // Replace callback in args
             if (typeof args[0] === 'string') {
                 if (Array.isArray(args[1])) {
                     args[2] = wrappedCallback;
@@ -127,7 +115,6 @@ export class MysqlCollector implements OnModuleInit {
                 args[1] = wrappedCallback;
             }
 
-            // Call original query
             return originalQuery.apply(this, args);
         };
     }
