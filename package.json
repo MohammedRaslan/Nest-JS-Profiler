@@ -1,14 +1,30 @@
 {
   "name": "nestjs-profiler",
-  "version": "0.0.1",
-  "description": "",
-  "author": "",
-  "private": true,
-  "license": "UNLICENSED",
+  "version": "1.0.0",
+  "description": "A NestJS module for profiling HTTP requests, database queries, and cache operations. Inspired by Symfony Profiler, it provides a web-based dashboard to inspect request duration, executed queries, log messages, and explain plans for slow queries.",
+  "author": "Mohamed Raslan",
+  "private": false,
+  "license": "MIT",
+  "main": "./dist/libs/nestjs-profiler/index.js",
+  "types": "./dist/libs/nestjs-profiler/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/libs/nestjs-profiler/index.d.ts",
+      "require": "./dist/libs/nestjs-profiler/index.js",
+      "import": "./dist/libs/nestjs-profiler/index.js"
+    }
+  },
+  "files": [
+    "dist/libs/nestjs-profiler",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
   "scripts": {
     "build": "nest build && copyfiles -u 1 libs/nestjs-profiler/src/assets/**/* dist/assets",
-    "build:lib": "nest build nestjs-profiler && cp libs/nestjs-profiler/package.json dist/libs/nestjs-profiler/ && cp -r libs/nestjs-profiler/src/assets dist/libs/nestjs-profiler/src/ && node -e \"const pkg=require('./dist/libs/nestjs-profiler/package.json'); pkg.main='./src/index.js'; pkg.types='./src/index.d.ts'; require('fs').writeFileSync('./dist/libs/nestjs-profiler/package.json', JSON.stringify(pkg, null, 2))\"",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "build:lib": "nest build nestjs-profiler && cp libs/nestjs-profiler/package.json dist/libs/nestjs-profiler/ && mkdir -p dist/libs/nestjs-profiler/src && cp -r libs/nestjs-profiler/src/assets dist/libs/nestjs-profiler/src/ && cp -r libs/nestjs-profiler/src/views dist/libs/nestjs-profiler/src/ && node -e \"const pkg=require('./dist/libs/nestjs-profiler/package.json'); pkg.main='./src/index.js'; pkg.types='./src/index.d.ts'; require('fs').writeFileSync('./dist/libs/nestjs-profiler/package.json', JSON.stringify(pkg, null, 2))\"",
+    "prepublishOnly": "npm run build:lib",
+    "format": "prettier --write \"{src,apps,libs,test}/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
@@ -20,16 +36,19 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
+  "keywords": [
+    "nestjs",
+    "nestjs-profiler",
+    "performance",
+    "monitoring",
+    "debugging",
+    "backend",
+    "nodejs",
+    "telescope",
+    "profiler"
+  ],
   "dependencies": {
-    "@nestjs/cache-manager": "^3.1.0",
-    "@nestjs/common": "^11.0.1",
-    "@nestjs/core": "^11.0.1",
-    "@nestjs/platform-express": "^11.0.1",
-    "@types/pg": "^8.16.0",
-    "cache-manager": "^7.2.8",
-    "pg": "^8.16.3",
-    "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "reflect-metadata": "^0.2.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -63,15 +82,44 @@
       "json",
       "ts"
     ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
+    "rootDir": ".",
+    "testRegex": "(/|^)test/.*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "libs/nestjs-profiler/src/**/*.(t|j)s",
+      "src/**/*.(t|j)s"
     ],
-    "coverageDirectory": "../coverage",
+    "coverageDirectory": "coverage",
     "testEnvironment": "node"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^10.0.0 || ^11.0.0",
+    "@nestjs/core": "^10.0.0 || ^11.0.0",
+    "rxjs": ">=7.0.0",
+    "pg": ">=8.0.0",
+    "mongodb": ">=4.0.0",
+    "mysql2": ">=2.0.0",
+    "@nestjs/cache-manager": ">=2.0.0",
+    "cache-manager": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "pg": { "optional": true },
+    "mongodb": { "optional": true },
+    "mysql2": { "optional": true },
+    "@nestjs/cache-manager": { "optional": true },
+    "cache-manager": { "optional": true }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MohammedRaslan/Nest-JS-Profiler.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MohammedRaslan/Nest-JS-Profiler/issues"
+  },
+  "homepage": "https://github.com/MohammedRaslan/Nest-JS-Profiler#readme",
+  "publishConfig": {
+    "access": "public"
   }
 }

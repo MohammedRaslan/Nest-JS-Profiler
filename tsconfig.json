@@ -22,11 +22,11 @@
     "strictBindCallApply": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@nestjs-pg-profiler/core": [
-        "libs/pg-profiler/src"
+      "nestjs-profiler": [
+        "libs/nestjs-profiler/src"
       ],
-      "@nestjs-pg-profiler/core/*": [
-        "libs/pg-profiler/src/*"
+      "nestjs-profiler/*": [
+        "libs/nestjs-profiler/src/*"
       ]
     }
   }

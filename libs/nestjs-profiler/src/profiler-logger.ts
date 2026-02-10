@@ -44,8 +44,6 @@ export class ProfilerLogger extends ConsoleLogger {
                 context: typeof context === 'string' ? context : undefined,
                 timestamp: Date.now()
             });
-        } catch (e) {
-            // Prevent logger from breaking app
-        }
+        } catch (e) { }
     }
 }

@@ -22,7 +22,6 @@ export class ExplainAnalyzer {
             return null;
         } catch (e: any) {
             if (e.message.includes('closed') || e.message.includes('terminated')) {
-                // Ignore closed client errors
                 return null;
             }
             if (process.env.PROFILER_DEBUG) {

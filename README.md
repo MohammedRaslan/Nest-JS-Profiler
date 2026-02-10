@@ -59,6 +59,8 @@ import { ProfilerModule } from 'nestjs-profiler';
         thresholdMs: 50,  // Only explain queries taking > 50ms
         analyze: false,   // If true, runs EXPLAIN ANALYZE (execution!)
       },
+      // Add pgDriver
+      pgDriver: pg,
       
       // MongoDB Profiling (default: true)
       collectMongo: true,
