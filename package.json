@@ -1,17 +1,17 @@
 {
   "name": "nestjs-profiler",
-  "version": "1.0.0",
+  "version": "1.0.20",
   "description": "A NestJS module for profiling HTTP requests, database queries, and cache operations. Inspired by Symfony Profiler, it provides a web-based dashboard to inspect request duration, executed queries, log messages, and explain plans for slow queries.",
   "author": "Mohamed Raslan",
   "private": false,
   "license": "MIT",
-  "main": "./dist/libs/nestjs-profiler/index.js",
-  "types": "./dist/libs/nestjs-profiler/index.d.ts",
+  "main": "./index.js",
+  "types": "./index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/libs/nestjs-profiler/index.d.ts",
-      "require": "./dist/libs/nestjs-profiler/index.js",
-      "import": "./dist/libs/nestjs-profiler/index.js"
+      "types": "./index.d.ts",
+      "require": "./index.js",
+      "import": "./index.js"
     }
   },
   "files": [
@@ -22,7 +22,8 @@
   "sideEffects": false,
   "scripts": {
     "build": "nest build && copyfiles -u 1 libs/nestjs-profiler/src/assets/**/* dist/assets",
-    "build:lib": "nest build nestjs-profiler && cp libs/nestjs-profiler/package.json dist/libs/nestjs-profiler/ && mkdir -p dist/libs/nestjs-profiler/src && cp -r libs/nestjs-profiler/src/assets dist/libs/nestjs-profiler/src/ && cp -r libs/nestjs-profiler/src/views dist/libs/nestjs-profiler/src/ && node -e \"const pkg=require('./dist/libs/nestjs-profiler/package.json'); pkg.main='./src/index.js'; pkg.types='./src/index.d.ts'; require('fs').writeFileSync('./dist/libs/nestjs-profiler/package.json', JSON.stringify(pkg, null, 2))\"",
+    "build:lib": "rm -rf dist && tsc -p libs/nestjs-profiler/tsconfig.lib.json && cp libs/nestjs-profiler/package.json dist/nestjs-profiler/ && cp README.md dist/nestjs-profiler/ && mkdir -p dist/nestjs-profiler/assets dist/nestjs-profiler/views && cp -r libs/nestjs-profiler/src/assets/* dist/nestjs-profiler/assets/ && cp -r libs/nestjs-profiler/src/views/* dist/nestjs-profiler/views/ && mv dist/nestjs-profiler/src/* dist/nestjs-profiler/ 2>/dev/null || true && rm -rf dist/nestjs-profiler/src",
+    "deploy": "npm run build:lib && cd dist/nestjs-profiler && npm publish",
     "prepublishOnly": "npm run build:lib",
     "format": "prettier --write \"{src,apps,libs,test}/**/*.ts\"",
     "start": "nest start",
@@ -59,7 +60,9 @@
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.7",
+    "@types/pg": "^8.16.0",
     "@types/supertest": "^6.0.2",
+    "cache-manager": "^7.2.8",
     "copyfiles": "^2.4.1",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
@@ -95,21 +98,31 @@
     "testEnvironment": "node"
   },
   "peerDependencies": {
-    "@nestjs/common": "^10.0.0 || ^11.0.0",
-    "@nestjs/core": "^10.0.0 || ^11.0.0",
-    "rxjs": ">=7.0.0",
-    "pg": ">=8.0.0",
+    "@nestjs/cache-manager": ">=2.0.0",
+    "@nestjs/common": "^9.0.0 || ^10.0.0 || ^11.0.0",
+    "@nestjs/core": "^9.0.0 || ^10.0.0 || ^11.0.0",
+    "cache-manager": ">=5.0.0",
     "mongodb": ">=4.0.0",
     "mysql2": ">=2.0.0",
-    "@nestjs/cache-manager": ">=2.0.0",
-    "cache-manager": ">=5.0.0"
+    "pg": ">=8.0.0",
+    "rxjs": ">=7.0.0"
   },
   "peerDependenciesMeta": {
-    "pg": { "optional": true },
-    "mongodb": { "optional": true },
-    "mysql2": { "optional": true },
-    "@nestjs/cache-manager": { "optional": true },
-    "cache-manager": { "optional": true }
+    "pg": {
+      "optional": true
+    },
+    "mongodb": {
+      "optional": true
+    },
+    "mysql2": {
+      "optional": true
+    },
+    "@nestjs/cache-manager": {
+      "optional": true
+    },
+    "cache-manager": {
+      "optional": true
+    }
   },
   "repository": {
     "type": "git",

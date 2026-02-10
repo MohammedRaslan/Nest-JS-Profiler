@@ -1,18 +1,22 @@
 # nestjs-profiler
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/MohammedRaslan/Nest-JS-Profiler/refs/heads/main/libs/nestjs-profiler/src/assets/logo.png" width="400" alt="NestJS Profiler Logo" />
+</p>
+
 A NestJS module for profiling HTTP requests, database queries, and cache operations. Inspired by Symfony Profiler, it provides a web-based dashboard to inspect request duration, executed queries, log messages, and explain plans for slow queries.
 
 ## Features
 
--   **HTTP Request Tracing**: Tracks method, URL, controller handler, duration, and status code.
--   **Database Profiling**:
-    -   **PostgreSQL**: Captures queries executed via `pg` (compatible with TypeORM, MikroORM, raw pg). Supports **Auto-Explain** to running `EXPLAIN` or `EXPLAIN ANALYZE` on slow queries.
-    -   **MongoDB**: Profiles MongoDB commands and queries.
-    -   **MySQL**: Profiles MySQL queries.
--   **Cache Profiling**: Tracks cache operations (get, set, del) when using `@nestjs/cache-manager`.
--   **Logger Profiling**: Captures application logs associated with the request context.
--   **Web UI**: Built-in lightweight dashboard at `/__profiler` to view traces.
--   **Zero Hard Dependencies**: Core functionality works out of the box; database drivers are optional peer dependencies.
+- **HTTP Request Tracing**: Tracks method, URL, controller handler, duration, and status code.
+- **Database Profiling**:
+  - **PostgreSQL**: Captures queries executed via `pg` (compatible with TypeORM, MikroORM, raw pg). Supports **Auto-Explain** to running `EXPLAIN` or `EXPLAIN ANALYZE` on slow queries.
+  - **MongoDB**: Profiles MongoDB commands and queries.
+  - **MySQL**: Profiles MySQL queries.
+- **Cache Profiling**: Tracks cache operations (get, set, del) when using `@nestjs/cache-manager`.
+- **Logger Profiling**: Captures application logs associated with the request context.
+- **Web UI**: Built-in lightweight dashboard at `/__profiler` to view traces.
+- **Zero Hard Dependencies**: Core functionality works out of the box; database drivers are optional peer dependencies.
 
 ## Installation
 
@@ -56,27 +60,27 @@ import { ProfilerModule } from 'nestjs-profiler';
       collectQueries: true,
       explain: {
         enabled: true,
-        thresholdMs: 50,  // Only explain queries taking > 50ms
-        analyze: false,   // If true, runs EXPLAIN ANALYZE (execution!)
+        thresholdMs: 50, // Only explain queries taking > 50ms
+        analyze: false, // If true, runs EXPLAIN ANALYZE (execution!)
       },
       // Add pgDriver
       pgDriver: pg,
-      
+
       // MongoDB Profiling (default: true)
       collectMongo: true,
-      
+
       // MySQL Profiling (default: true)
       collectMysql: true,
-      
+
       // Cache Profiling (default: true)
       collectCache: true,
-      
+
       // Log Profiling (default: true)
       collectLogs: true,
 
       // Storage backend (default: InMemory)
       // You can implement custom storage by passing an object implementing ProfilerStorage
-      storage: 'memory', 
+      storage: 'memory',
     }),
   ],
 })
@@ -97,10 +101,10 @@ import { ProfilerModule } from 'nestjs-profiler';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
+
   // Initialize Profiler Explorers
   ProfilerModule.initialize(app);
-  
+
   await app.listen(3000);
 }
 bootstrap();
@@ -115,8 +119,9 @@ Navigate to `http://localhost:3000/__profiler` (or your app's port).
 ### 3. JSON API
 
 You can also retrieve profile data programmatically:
--   `GET /__profiler/json` - List recent requests
--   `GET /__profiler/:id/json` - Get details for a specific request
+
+- `GET /__profiler/json` - List recent requests
+- `GET /__profiler/:id/json` - Get details for a specific request
 
 ## License
 

@@ -1,17 +1,67 @@
 {
     "name": "nestjs-profiler",
-    "version": "0.0.1",
-    "description": "NestJS PostgreSQL Profiler",
-    "main": "dist/index",
-    "types": "dist/index.d.ts",
+    "version": "1.0.20",
+    "description": "A NestJS module for profiling HTTP requests, database queries, and cache operations. Inspired by Symfony Profiler, it provides a web-based dashboard to inspect request duration, executed queries, log messages, and explain plans for slow queries.",
+    "author": "Mohamed Raslan",
+    "main": "./index.js",
+    "types": "./index.d.ts",
     "dependencies": {},
+    "license": "MIT",
+    "readme": "README.md",
+    "keywords": [
+        "nestjs",
+        "nestjs-profiler",
+        "performance",
+        "monitoring",
+        "debugging",
+        "backend",
+        "nodejs",
+        "telescope",
+        "profiler"
+    ],
+    "homepage": "https://github.com/MohammedRaslan/Nest-JS-Profiler#readme",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/MohammedRaslan/Nest-JS-Profiler.git"
+    },
+    "bugs": {
+        "url": "https://github.com/MohammedRaslan/Nest-JS-Profiler/issues"
+    },
+    "exports": {
+        ".": {
+            "types": "./index.d.ts",
+            "import": "./index.js",
+            "require": "./index.js"
+        }
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "files": [
+        "*.js",
+        "*.d.ts",
+        "*.js.map",
+        "analyzers",
+        "collectors",
+        "common",
+        "controllers",
+        "interceptors",
+        "middleware",
+        "services",
+        "storage",
+        "assets",
+        "views",
+        "README.md"
+    ],
     "peerDependencies": {
-        "@nestjs/common": "^10.0.0 || ^11.0.0",
-        "@nestjs/core": "^10.0.0 || ^11.0.0",
+        "@nestjs/common": "^9.0.0 || ^10.0.0 || ^11.0.0",
+        "@nestjs/core": "^9.0.0 || ^10.0.0 || ^11.0.0",
+        "rxjs": ">=7.0.0",
         "pg": ">=8.0.0",
         "mongodb": ">=4.0.0",
         "mysql2": ">=2.0.0",
-        "rxjs": "^7.0.0"
+        "@nestjs/cache-manager": ">=2.0.0",
+        "cache-manager": ">=5.0.0"
     },
     "peerDependenciesMeta": {
         "mongodb": {
@@ -26,6 +76,9 @@
         "cache-manager": {
             "optional": true
         }
+    },
+    "dependencies": {
+        "cache-manager": "^5.0.0"
     },
     "devDependencies": {
         "@nestjs/cache-manager": "^2.0.0",
