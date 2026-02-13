@@ -66,6 +66,12 @@ import { ProfilerModule } from 'nestjs-profiler';
       // Add pgDriver
       pgDriver: pg,
 
+      // Add mysql2 driver for MySQL profiling
+      mysqlDriver: mysql2,
+
+      // Add mongodb driver for MongoDB profiling
+      mongoDriver: mongodb,
+
       // MongoDB Profiling (default: true)
       collectMongo: true,
 
@@ -122,6 +128,16 @@ You can also retrieve profile data programmatically:
 
 - `GET /__profiler/json` - List recent requests
 - `GET /__profiler/:id/json` - Get details for a specific request
+
+### NOTE: IMPORTANT
+
+- The profiler is designed for development and debugging. **Do not enable in production** due to performance overhead and potential security risks.
+- If you have a prefix for your API routes (e.g., `/api`), you have to adjust the global prefix like this:
+  ```typescript
+  app.setGlobalPrefix('api', {
+    exclude: [{ path: '__profiler/(.*)', method: RequestMethod.ALL }],
+  });
+  ```
 
 ## License
 
