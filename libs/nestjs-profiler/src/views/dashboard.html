@@ -51,6 +51,17 @@
     {{{ emptyState }}}
 
     <script>
+        function filterRows(term) {
+            const body = document.getElementById('tableBody');
+            if (!body) return;
+            const lower = (term || '').toLowerCase();
+            Array.from(body.rows).forEach(row => {
+                const urlCell = row.cells[1];
+                const text = urlCell ? urlCell.textContent.toLowerCase() : '';
+                row.style.display = (!lower || text.includes(lower)) ? '' : 'none';
+            });
+        }
+
         function toggleSort() {
             const table = document.getElementById('tableBody');
             const rows = Array.from(table.rows);
@@ -65,6 +76,19 @@
             } else {
                 asc.classList.add('text-indigo-600', 'opacity-100'); asc.classList.remove('opacity-50');
                 desc.classList.remove('text-indigo-600', 'opacity-100'); desc.classList.add('opacity-50');
+            }
+        }
+
+        // Wire search input
+        const searchInput = document.getElementById('search');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => filterRows(searchInput.value));
+
+            // Pre-fill from ?search= query param (used by links from summary page)
+            const preSearch = new URLSearchParams(window.location.search).get('search');
+            if (preSearch) {
+                searchInput.value = preSearch;
+                filterRows(preSearch);
             }
         }
     </script>

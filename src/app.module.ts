@@ -8,6 +8,11 @@ import { ProfilerModule } from '../libs/nestjs-profiler/src';
   imports: [
     ProfilerModule.forRoot({
       enabled: true,
+      collectQueries: true,
+      collectLogs: true,
+      collectCache: true,
+      collectHttp: true,
+      pgDriver: require('pg'),
     }),
     CacheModule.register({
       isGlobal: true,

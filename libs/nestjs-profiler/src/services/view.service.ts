@@ -37,24 +37,33 @@ export class ViewService {
         const layoutPath = path.join(this.viewsPath, 'layout.html');
         let layout = this.loadTemplate(layoutPath);
 
+        const active = (tab: string) => activeTab === tab ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white';
+        const activeIcon = (tab: string) => activeTab === tab ? 'text-indigo-300' : 'text-slate-400 group-hover:text-white';
+
         const data = {
             title,
             content,
             activeTab,
             activeClass: 'bg-indigo-600 text-white',
             inactiveClass: 'text-slate-300 hover:bg-slate-800 hover:text-white',
-            requestsActive: activeTab === 'requests' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white',
-            queriesActive: activeTab === 'queries' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white',
-            logsActive: activeTab === 'logs' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white',
-            entitiesActive: activeTab === 'entities' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white',
-            routesActive: activeTab === 'routes' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white',
-            cacheActive: activeTab === 'cache' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white',
-            requestsIconClass: activeTab === 'requests' ? 'text-indigo-300' : 'text-slate-400 group-hover:text-white',
-            queriesIconClass: activeTab === 'queries' ? 'text-indigo-300' : 'text-slate-400 group-hover:text-white',
-            logsIconClass: activeTab === 'logs' ? 'text-indigo-300' : 'text-slate-400 group-hover:text-white',
-            entitiesIconClass: activeTab === 'entities' ? 'text-indigo-300' : 'text-slate-400 group-hover:text-white',
-            routesIconClass: activeTab === 'routes' ? 'text-indigo-300' : 'text-slate-400 group-hover:text-white',
-            cacheIconClass: activeTab === 'cache' ? 'text-indigo-300' : 'text-slate-400 group-hover:text-white',
+            summaryActive: active('summary'),
+            requestsActive: active('requests'),
+            queriesActive: active('queries'),
+            logsActive: active('logs'),
+            entitiesActive: active('entities'),
+            routesActive: active('routes'),
+            cacheActive: active('cache'),
+            httpCallsActive: active('http-calls'),
+            liveLogsActive: active('live-logs'),
+            summaryIconClass: activeIcon('summary'),
+            requestsIconClass: activeIcon('requests'),
+            queriesIconClass: activeIcon('queries'),
+            logsIconClass: activeIcon('logs'),
+            entitiesIconClass: activeIcon('entities'),
+            routesIconClass: activeIcon('routes'),
+            cacheIconClass: activeIcon('cache'),
+            httpCallsIconClass: activeIcon('http-calls'),
+            liveLogsIconClass: activeIcon('live-logs'),
         };
 
         layout = this.interpolate(layout, data);

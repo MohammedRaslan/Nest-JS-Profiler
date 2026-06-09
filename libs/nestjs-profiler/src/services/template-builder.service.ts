@@ -1,10 +1,198 @@
 import { Injectable } from '@nestjs/common';
-import { RequestProfile, QueryProfile, LogProfile } from '../common/profiler.model';
+import { RequestProfile, QueryProfile, LogProfile, HttpCallProfile } from '../common/profiler.model';
 import { ViewService } from './view.service';
 
 @Injectable()
 export class TemplateBuilderService {
     constructor(private readonly viewService: ViewService) { }
+
+    /** Build live logs terminal page (no dynamic data — all rendered client-side via SSE) */
+    buildLiveLogsPage(): string {
+        return this.viewService.render('live-logs', {});
+    }
+
+    /**
+     * Build the summary/stats dashboard page
+     */
+    buildSummaryPage(stats: Awaited<ReturnType<import('./profiler.service').ProfilerService['getSummaryStats']>>): string {
+        const errorCount = Math.round(stats.totalRequests * stats.errorRate / 100);
+        const avgQueriesPerRequest = stats.totalRequests > 0
+            ? (stats.totalQueries / stats.totalRequests).toFixed(1)
+            : '0';
+
+        // Error rate styling
+        const errorRateBadgeClass = stats.errorRate > 10 ? 'bg-red-50' : stats.errorRate > 0 ? 'bg-yellow-50' : 'bg-green-50';
+        const errorRateTextClass = stats.errorRate > 10 ? 'text-red-600' : stats.errorRate > 0 ? 'text-yellow-600' : 'text-gray-900';
+
+        // Slow queries styling
+        const slowQueriesTextClass = stats.slowQueries > 0 ? 'text-yellow-600' : 'text-gray-900';
+
+        // N+1 styling
+        const nPlusOneBadgeClass = stats.nPlusOneCount > 0 ? 'bg-orange-50' : 'bg-green-50';
+        const nPlusOneIconClass = stats.nPlusOneCount > 0 ? 'text-orange-500' : 'text-green-600';
+        const nPlusOneTextClass = stats.nPlusOneCount > 0 ? 'text-orange-600' : 'text-gray-900';
+
+        // Method distribution bars
+        const methodColors: Record<string, string> = {
+            GET: 'bg-blue-500', POST: 'bg-green-500', PUT: 'bg-orange-500',
+            PATCH: 'bg-yellow-500', DELETE: 'bg-red-500',
+        };
+        const totalReqs = stats.totalRequests || 1;
+        const methodBars = Object.entries(stats.methodDistribution)
+            .sort((a, b) => b[1] - a[1])
+            .map(([method, count]) => {
+                const pct = Math.round((count / totalReqs) * 100);
+                const color = methodColors[method] || 'bg-gray-400';
+                return `
+                <div class="mb-3">
+                    <div class="flex justify-between text-xs text-gray-600 mb-1">
+                        <span class="font-medium">${method}</span>
+                        <span>${count} (${pct}%)</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2">
+                        <div class="${color} h-2 rounded-full" style="width:${pct}%"></div>
+                    </div>
+                </div>`;
+            }).join('') || '<p class="text-sm text-gray-400 italic">No data</p>';
+
+        // Status distribution bars
+        const statusColors: Record<string, string> = {
+            '2xx': 'bg-green-500', '3xx': 'bg-blue-400',
+            '4xx': 'bg-yellow-500', '5xx': 'bg-red-500', 'unknown': 'bg-gray-400',
+        };
+        const statusBars = Object.entries(stats.statusDistribution)
+            .sort((a, b) => b[1] - a[1])
+            .map(([bucket, count]) => {
+                const pct = Math.round((count / totalReqs) * 100);
+                const color = statusColors[bucket] || 'bg-gray-400';
+                return `
+                <div class="mb-3">
+                    <div class="flex justify-between text-xs text-gray-600 mb-1">
+                        <span class="font-medium">${bucket}</span>
+                        <span>${count} (${pct}%)</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2">
+                        <div class="${color} h-2 rounded-full" style="width:${pct}%"></div>
+                    </div>
+                </div>`;
+            }).join('') || '<p class="text-sm text-gray-400 italic">No data</p>';
+
+        // Top slow endpoints table
+        const topEndpointsTable = stats.topSlowEndpoints.length > 0
+            ? `<table class="w-full text-sm">
+                <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                    <tr>
+                        <th class="px-4 py-2 text-left">Endpoint</th>
+                        <th class="px-4 py-2 text-right">Calls</th>
+                        <th class="px-4 py-2 text-right">Avg</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                ${stats.topSlowEndpoints.map(e => `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3">
+                            <a href="/__profiler?search=${encodeURIComponent(e.route)}" class="group inline-flex items-center gap-1.5 hover:underline">
+                                <span class="inline-block text-xs font-semibold px-1.5 py-0.5 rounded ${this.getMethodBadgeClass(e.method)}">${e.method}</span>
+                                <span class="font-mono text-xs text-gray-700 group-hover:text-indigo-600 truncate">${e.route}</span>
+                            </a>
+                        </td>
+                        <td class="px-4 py-3 text-right text-xs text-gray-500">${e.callCount}</td>
+                        <td class="px-4 py-3 text-right text-xs font-semibold ${e.avgDuration > 500 ? 'text-red-600' : e.avgDuration > 100 ? 'text-yellow-600' : 'text-gray-700'}">${Math.round(e.avgDuration)}ms</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>`
+            : '<div class="p-6 text-center text-sm text-gray-400 italic">No endpoint data yet</div>';
+
+        // Top slow queries table
+        const topQueriesTable = stats.topSlowQueries.length > 0
+            ? `<div class="divide-y divide-gray-100">
+                ${stats.topSlowQueries.map(q => `
+                    <div class="px-5 py-3">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-mono text-xs text-gray-400 truncate max-w-xs">${q.requestUrl}</span>
+                            <span class="text-xs font-bold ${q.duration > 500 ? 'text-red-600' : q.duration > 100 ? 'text-yellow-600' : 'text-gray-600'} ml-2 flex-shrink-0">${q.duration}ms</span>
+                        </div>
+                        <pre class="text-xs text-gray-700 font-mono bg-gray-50 rounded px-2 py-1 truncate overflow-hidden">${(q.sql || '').substring(0, 120)}${(q.sql || '').length > 120 ? '...' : ''}</pre>
+                    </div>`).join('')}
+            </div>`
+            : '<div class="p-6 text-center text-sm text-gray-400 italic">No query data yet</div>';
+
+        // Recent errors section
+        const recentErrorsSection = stats.recentErrors.length > 0
+            ? `<div class="bg-white rounded-xl border border-red-200 shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b border-red-100 bg-red-50 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <h3 class="text-sm font-semibold text-red-800">Recent Errors</h3>
+                </div>
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                        <tr>
+                            <th class="px-4 py-2 text-left">Endpoint</th>
+                            <th class="px-4 py-2 text-left">Status</th>
+                            <th class="px-4 py-2 text-left">Message</th>
+                            <th class="px-4 py-2 text-right">When</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                    ${stats.recentErrors.map(e => `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3">
+                                <a href="/__profiler/${e.id}" class="group inline-flex items-center gap-1.5 hover:underline">
+                                    <span class="inline-block text-xs font-semibold px-1.5 py-0.5 rounded ${this.getMethodBadgeClass(e.method)}">${e.method}</span>
+                                    <span class="font-mono text-xs text-gray-700 group-hover:text-indigo-600">${e.url}</span>
+                                </a>
+                            </td>
+                            <td class="px-4 py-3"><span class="text-xs font-bold text-red-600">${e.statusCode}</span></td>
+                            <td class="px-4 py-3 text-xs text-gray-500 max-w-xs truncate">${e.message || '-'}</td>
+                            <td class="px-4 py-3 text-right text-xs text-gray-400">${this.viewService.timeAgo(e.timestamp)}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>`
+            : '';
+
+        return this.viewService.render('summary', {
+            totalRequests: stats.totalRequests,
+            avgDuration: stats.avgDuration,
+            p95Duration: stats.p95Duration,
+            errorRate: stats.errorRate,
+            errorCount,
+            errorRateBadgeClass,
+            errorRateTextClass,
+            totalQueries: stats.totalQueries,
+            avgQueriesPerRequest,
+            slowQueries: stats.slowQueries,
+            slowQueriesTextClass,
+            nPlusOneCount: stats.nPlusOneCount,
+            nPlusOneBadgeClass,
+            nPlusOneIconClass,
+            nPlusOneTextClass,
+            seqScanCount: stats.seqScanCount,
+            cacheHitRate: stats.cacheHitRate,
+            totalCacheOps: stats.totalCacheOps,
+            heapUsed: stats.memoryUsage?.heapUsed ?? '-',
+            heapTotal: stats.memoryUsage?.heapTotal ?? '-',
+            rss: stats.memoryUsage?.rss ?? '-',
+            methodBars,
+            statusBars,
+            topEndpointsTable,
+            topQueriesTable,
+            recentErrorsSection,
+        });
+    }
+
+    private getMethodBadgeClass(method: string): string {
+        const classes: Record<string, string> = {
+            GET: 'bg-blue-100 text-blue-800',
+            POST: 'bg-green-100 text-green-800',
+            PUT: 'bg-orange-100 text-orange-800',
+            PATCH: 'bg-yellow-100 text-yellow-800',
+            DELETE: 'bg-red-100 text-red-800',
+        };
+        return classes[method] || 'bg-gray-100 text-gray-800';
+    }
 
     /**
      * Build dashboard HTML
@@ -41,7 +229,8 @@ export class TemplateBuilderService {
             bodyView: this.buildBodyView(profile.requestBody),
             exceptionView: this.buildExceptionView(profile.exception),
             timingBar: this.buildTimingBar(profile.timings, profile.duration || 0),
-            cacheSection: this.buildCacheSection(profile.cache || [])
+            cacheSection: this.buildCacheSection(profile.cache || []),
+            httpCallsSection: this.buildHttpCallsSection(profile.httpCalls || []),
         });
     }
 
@@ -351,6 +540,119 @@ export class TemplateBuilderService {
         if (statusCode >= 400) return 'bg-yellow-500';
         if (statusCode >= 300) return 'bg-blue-500';
         return 'bg-green-500';
+    }
+
+    /**
+     * Build global HTTP calls list page
+     */
+    buildHttpCallsList(calls: any[]): string {
+        const rows = calls.map(c => {
+            const statusClass = !c.statusCode ? 'text-gray-400'
+                : c.statusCode >= 500 ? 'text-red-600 font-bold'
+                : c.statusCode >= 400 ? 'text-yellow-600 font-bold'
+                : 'text-green-600';
+            const durationClass = c.error ? 'text-red-600' : c.duration > 500 ? 'text-red-600 font-bold' : c.duration > 200 ? 'text-yellow-600' : 'text-gray-600';
+            const protocolBadge = c.protocol === 'https'
+                ? '<span class="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-semibold">HTTPS</span>'
+                : '<span class="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-semibold">HTTP</span>';
+            return `
+            <tr class="hover:bg-gray-50 border-b border-gray-100">
+                <td class="p-3 whitespace-nowrap">
+                    ${this.viewService.getMethodBadge(c.method)}
+                </td>
+                <td class="p-3 max-w-xs">
+                    <div class="flex items-center gap-1.5">
+                        ${protocolBadge}
+                        <span class="font-mono text-xs text-gray-800 truncate" title="${c.url}">${c.url}</span>
+                    </div>
+                    ${c.error ? `<div class="text-xs text-red-600 mt-0.5">Error: ${c.error}</div>` : ''}
+                </td>
+                <td class="p-3 whitespace-nowrap">
+                    <span class="text-sm ${statusClass}">${c.statusCode ?? '-'}</span>
+                </td>
+                <td class="p-3 whitespace-nowrap text-right">
+                    <span class="text-sm ${durationClass}">${c.duration}ms</span>
+                </td>
+                <td class="p-3 whitespace-nowrap">
+                    <a href="/__profiler/${c.requestId}" class="text-xs text-indigo-600 hover:underline font-mono truncate block max-w-[140px]" title="${c.requestUrl}">
+                        ${c.requestMethod} ${c.requestUrl}
+                    </a>
+                </td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="5" class="p-8 text-center text-gray-500">No outbound HTTP calls recorded.</td></tr>';
+
+        return `
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                <h2 class="font-semibold text-gray-700">Outbound HTTP Calls</h2>
+                <span class="text-xs text-gray-500 bg-white border border-gray-200 px-2 py-1 rounded-md">${calls.length} calls</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-50 text-gray-500 uppercase text-xs tracking-wider font-medium">
+                        <tr>
+                            <th class="p-3 border-b border-gray-200 w-16">Method</th>
+                            <th class="p-3 border-b border-gray-200">URL</th>
+                            <th class="p-3 border-b border-gray-200 w-16">Status</th>
+                            <th class="p-3 border-b border-gray-200 w-24 text-right">Duration</th>
+                            <th class="p-3 border-b border-gray-200 w-40">Triggered by</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        </div>`;
+    }
+
+    private buildHttpCallsSection(calls: HttpCallProfile[]): string {
+        if (!calls || calls.length === 0) return '';
+
+        const rows = calls.map(c => {
+            const statusClass = !c.statusCode ? 'text-gray-400'
+                : c.statusCode >= 500 ? 'text-red-600 font-bold'
+                : c.statusCode >= 400 ? 'text-yellow-600 font-bold'
+                : 'text-green-600';
+            const durationClass = c.error ? 'text-red-600' : c.duration > 500 ? 'text-red-600 font-bold' : c.duration > 200 ? 'text-yellow-600' : 'text-gray-600';
+            const protocolBadge = c.protocol === 'https'
+                ? '<span class="text-xs px-1 py-0.5 rounded bg-green-100 text-green-700 font-semibold">HTTPS</span>'
+                : '<span class="text-xs px-1 py-0.5 rounded bg-gray-100 text-gray-600 font-semibold">HTTP</span>';
+            return `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2.5 whitespace-nowrap">${this.viewService.getMethodBadge(c.method)}</td>
+                    <td class="px-4 py-2.5">
+                        <div class="flex items-center gap-1.5">
+                            ${protocolBadge}
+                            <span class="font-mono text-xs text-gray-800 break-all">${c.url}</span>
+                        </div>
+                        ${c.error ? `<div class="text-xs text-red-600 mt-0.5">Error: ${c.error}</div>` : ''}
+                    </td>
+                    <td class="px-4 py-2.5 whitespace-nowrap text-center">
+                        <span class="text-sm ${statusClass}">${c.statusCode ?? '—'}</span>
+                    </td>
+                    <td class="px-4 py-2.5 whitespace-nowrap text-right">
+                        <span class="text-sm ${durationClass}">${c.duration}ms</span>
+                    </td>
+                </tr>`;
+        }).join('');
+
+        return `
+            <div class="bg-gray-50 rounded-lg border border-gray-200 p-4 mb-4">
+                <h2 class="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Outbound HTTP Calls (${calls.length})</h2>
+                <div class="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-16">Method</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">URL</th>
+                                <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase w-16">Status</th>
+                                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase w-24">Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">${rows}</tbody>
+                    </table>
+                </div>
+            </div>
+        `;
     }
 
     private buildCacheSection(cache: any[]): string {

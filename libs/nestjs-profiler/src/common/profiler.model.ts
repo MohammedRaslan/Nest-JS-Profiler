@@ -34,6 +34,20 @@ export interface CacheProfile {
     value?: any;
 }
 
+export interface HttpCallProfile {
+    method: string;           // GET, POST, etc.
+    url: string;              // full URL
+    host: string;
+    path: string;
+    statusCode?: number;
+    duration: number;         // ms
+    startTime: number;
+    requestHeaders?: Record<string, string>;
+    responseHeaders?: Record<string, string>;
+    error?: string;
+    protocol: 'http' | 'https';
+}
+
 export interface RequestProfile {
     id: string;
     method: string;
@@ -55,6 +69,7 @@ export interface RequestProfile {
     queries: QueryProfile[];
     logs: LogProfile[];
     cache?: CacheProfile[];
+    httpCalls?: HttpCallProfile[];
     timestamp: number;
     requestHeaders?: Record<string, any>;
     requestBody?: any;

@@ -91,6 +91,15 @@
                 </a>
             </div>
             <nav class="flex-1 px-4 py-6 space-y-1">
+                <a href="/__profiler/view/summary"
+                    class="flex items-center px-2 py-2 text-sm font-medium rounded-md group {{{ summaryActive }}}">
+                    <svg class="mr-3 flex-shrink-0 h-6 w-6 {{{ summaryIconClass }}}" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Summary
+                </a>
                 <a href="/__profiler"
                     class="flex items-center px-2 py-2 text-sm font-medium rounded-md group {{{ requestsActive }}}">
                     <svg class="mr-3 flex-shrink-0 h-6 w-6 {{{ requestsIconClass }}}" fill="none" viewBox="0 0 24 24"
@@ -144,6 +153,25 @@
                             d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                     Cache
+                </a>
+                <a href="/__profiler/view/http-calls"
+                    class="flex items-center px-2 py-2 text-sm font-medium rounded-md group {{{ httpCallsActive }}}">
+                    <svg class="mr-3 flex-shrink-0 h-6 w-6 {{{ httpCallsIconClass }}}" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    HTTP Calls
+                </a>
+                <a href="/__profiler/view/logs/live"
+                    class="flex items-center px-2 py-2 text-sm font-medium rounded-md group {{{ liveLogsActive }}}">
+                    <svg class="mr-3 flex-shrink-0 h-6 w-6 {{{ liveLogsIconClass }}}" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Live Logs
+                    <span class="ml-auto w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
                 </a>
             </nav>
             <div class="flex-shrink-0 flex bg-slate-800 p-4">
@@ -212,6 +240,18 @@
                         });
                     };
 
+                    // Re-execute <script> tags injected via innerHTML (browsers skip them by default)
+                    const reExecScripts = (container) => {
+                        container.querySelectorAll('script').forEach(oldScript => {
+                            const newScript = document.createElement('script');
+                            Array.from(oldScript.attributes).forEach(a =>
+                                newScript.setAttribute(a.name, a.value)
+                            );
+                            newScript.textContent = oldScript.textContent;
+                            oldScript.parentNode.replaceChild(newScript, oldScript);
+                        });
+                    };
+
                     const navigate = async (url) => {
                         try {
                             // Show loading state if needed
@@ -231,6 +271,9 @@
 
                             // Update Title
                             document.title = doc.title;
+
+                            // Re-execute inline scripts (needed for live logs SSE connect(), etc.)
+                            reExecScripts(mainContent);
 
                             // Re-attach listeners (like search)
                             const newSearchInput = document.getElementById('search');
@@ -259,6 +302,8 @@
                         if (link && link.href && link.href.includes('/__profiler') && !link.getAttribute('target')) {
                             const url = new URL(link.href);
                             if (url.origin === window.location.origin) {
+                                // Live logs uses SSE — always do a full page load so the script runs fresh
+                                if (url.pathname.includes('/logs/live')) return;
                                 e.preventDefault();
                                 const path = url.pathname + url.search;
                                 history.pushState({}, '', path);

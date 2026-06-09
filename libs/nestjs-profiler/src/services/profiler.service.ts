@@ -1,6 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { AsyncLocalStorage } from 'async_hooks';
-import { RequestProfile, QueryProfile, LogProfile } from '../common/profiler.model';
+import { EventEmitter } from 'events';
+import { RequestProfile, QueryProfile, LogProfile, HttpCallProfile } from '../common/profiler.model';
 import type { ProfilerOptions } from '../common/profiler-options.interface';
 import type { ProfilerStorage } from '../storage/profiler-storage.interface';
 import * as crypto from 'crypto';
@@ -9,6 +10,7 @@ import * as crypto from 'crypto';
 export class ProfilerService {
     private readonly als = new AsyncLocalStorage<RequestProfile>();
     private readonly logger = new Logger(ProfilerService.name);
+    readonly logEmitter = new EventEmitter();
 
     constructor(
         @Inject('PROFILER_OPTIONS') private options: ProfilerOptions,
@@ -35,6 +37,7 @@ export class ProfilerService {
             queries: [],
             logs: [],
             cache: [],
+            httpCalls: [],
             timestamp: Date.now(),
         };
 
@@ -109,6 +112,9 @@ export class ProfilerService {
     }
 
     addLog(log: LogProfile) {
+        // Always broadcast to live SSE clients, regardless of active request context
+        this.logEmitter.emit('log', log);
+
         const profile = this.als.getStore();
         if (profile) {
             profile.logs.push(log);
@@ -126,6 +132,15 @@ export class ProfilerService {
             // If we are developing/debugging, we might want to know this. 
             // In production this would be spammy, but for now it's crucial.
             this.logger.debug(`Profiler: Skipping cache capture for ${cacheProfile.key} - No active request context (ALS is empty).`);
+        }
+    }
+
+    addHttpCall(call: HttpCallProfile) {
+        const profile = this.als.getStore();
+        if (profile) {
+            if (!profile.httpCalls) profile.httpCalls = [];
+            profile.httpCalls.push(call);
+            this.storage.save(profile);
         }
     }
 
@@ -219,6 +234,161 @@ export class ProfilerService {
      */
     async getProfileJson(id: string): Promise<RequestProfile | null> {
         return Promise.resolve(this.storage.get(id));
+    }
+
+    /**
+     * Compute aggregate summary statistics across all captured profiles
+     */
+    async getSummaryStats(): Promise<{
+        totalRequests: number;
+        avgDuration: number;
+        p95Duration: number;
+        errorRate: number;
+        totalQueries: number;
+        slowQueries: number;
+        nPlusOneCount: number;
+        seqScanCount: number;
+        cacheHitRate: number;
+        totalCacheOps: number;
+        methodDistribution: Record<string, number>;
+        statusDistribution: Record<string, number>;
+        topSlowEndpoints: { route: string; method: string; avgDuration: number; callCount: number }[];
+        topSlowQueries: { sql: string; duration: number; requestUrl: string }[];
+        recentErrors: { id: string; url: string; method: string; statusCode: number; message: string; timestamp: number }[];
+        memoryUsage: { rss: number; heapUsed: number; heapTotal: number } | null;
+    }> {
+        const profiles = await Promise.resolve(this.storage.all());
+
+        if (profiles.length === 0) {
+            return {
+                totalRequests: 0, avgDuration: 0, p95Duration: 0, errorRate: 0,
+                totalQueries: 0, slowQueries: 0, nPlusOneCount: 0, seqScanCount: 0,
+                cacheHitRate: 0, totalCacheOps: 0,
+                methodDistribution: {}, statusDistribution: {},
+                topSlowEndpoints: [], topSlowQueries: [], recentErrors: [],
+                memoryUsage: null,
+            };
+        }
+
+        // Basic request stats
+        const durations = profiles.map(p => p.duration || 0).sort((a, b) => a - b);
+        const avgDuration = durations.reduce((s, d) => s + d, 0) / durations.length;
+        const p95Duration = durations[Math.floor(durations.length * 0.95)] ?? durations[durations.length - 1];
+
+        const errorProfiles = profiles.filter(p => p.statusCode && p.statusCode >= 400);
+        const errorRate = (errorProfiles.length / profiles.length) * 100;
+
+        // Query stats
+        const allQueries = profiles.flatMap(p => p.queries || []);
+        const slowQueries = allQueries.filter(q => q.duration > 100).length;
+        const nPlusOneCount = allQueries.filter(q => q.tags?.includes('n+1')).length;
+        const seqScanCount = allQueries.filter(q => q.tags?.includes('seq-scan')).length;
+
+        // Cache stats
+        const allCacheOps = profiles.flatMap(p => p.cache || []);
+        const cacheHits = allCacheOps.filter(c => c.result === 'hit').length;
+        const cacheGets = allCacheOps.filter(c => c.operation === 'get').length;
+        const cacheHitRate = cacheGets > 0 ? (cacheHits / cacheGets) * 100 : 0;
+
+        // Method distribution
+        const methodDistribution: Record<string, number> = {};
+        profiles.forEach(p => {
+            const m = p.method || 'UNKNOWN';
+            methodDistribution[m] = (methodDistribution[m] || 0) + 1;
+        });
+
+        // Status distribution (grouped: 2xx, 3xx, 4xx, 5xx)
+        const statusDistribution: Record<string, number> = {};
+        profiles.forEach(p => {
+            const code = p.statusCode || 0;
+            const bucket = code >= 500 ? '5xx' : code >= 400 ? '4xx' : code >= 300 ? '3xx' : code >= 200 ? '2xx' : 'unknown';
+            statusDistribution[bucket] = (statusDistribution[bucket] || 0) + 1;
+        });
+
+        // Top slow endpoints (group by route or url)
+        const endpointMap = new Map<string, { durations: number[]; method: string }>();
+        profiles.forEach(p => {
+            const key = `${p.method}:${p.route || p.url}`;
+            if (!endpointMap.has(key)) endpointMap.set(key, { durations: [], method: p.method });
+            endpointMap.get(key)!.durations.push(p.duration || 0);
+        });
+        const topSlowEndpoints = Array.from(endpointMap.entries())
+            .map(([key, val]) => ({
+                route: key.split(':').slice(1).join(':'),
+                method: val.method,
+                avgDuration: val.durations.reduce((s, d) => s + d, 0) / val.durations.length,
+                callCount: val.durations.length,
+            }))
+            .sort((a, b) => b.avgDuration - a.avgDuration)
+            .slice(0, 5);
+
+        // Top slow queries
+        const topSlowQueries = [...allQueries]
+            .sort((a, b) => b.duration - a.duration)
+            .slice(0, 5)
+            .map(q => {
+                const parent = profiles.find(p => p.queries.includes(q));
+                return { sql: q.sql || q.query || '', duration: q.duration, requestUrl: parent?.url || '' };
+            });
+
+        // Recent errors
+        const recentErrors = errorProfiles
+            .slice(0, 5)
+            .map(p => ({
+                id: p.id,
+                url: p.url,
+                method: p.method,
+                statusCode: p.statusCode || 0,
+                message: p.exception?.message || '',
+                timestamp: p.timestamp,
+            }));
+
+        // Latest memory snapshot
+        const latestWithMemory = [...profiles].find(p => p.memory);
+        const memoryUsage = latestWithMemory?.memory
+            ? {
+                rss: Math.round(latestWithMemory.memory.rss / 1024 / 1024),
+                heapUsed: Math.round(latestWithMemory.memory.heapUsed / 1024 / 1024),
+                heapTotal: Math.round(latestWithMemory.memory.heapTotal / 1024 / 1024),
+            }
+            : null;
+
+        return {
+            totalRequests: profiles.length,
+            avgDuration: Math.round(avgDuration),
+            p95Duration: Math.round(p95Duration),
+            errorRate: Math.round(errorRate * 10) / 10,
+            totalQueries: allQueries.length,
+            slowQueries,
+            nPlusOneCount,
+            seqScanCount,
+            cacheHitRate: Math.round(cacheHitRate * 10) / 10,
+            totalCacheOps: allCacheOps.length,
+            methodDistribution,
+            statusDistribution,
+            topSlowEndpoints,
+            topSlowQueries,
+            recentErrors,
+            memoryUsage,
+        };
+    }
+
+    /**
+     * Get all outbound HTTP calls across all profiles
+     */
+    async getHttpCallsList(): Promise<any[]> {
+        const profiles = await Promise.resolve(this.storage.all());
+        const allCalls = profiles.flatMap(p =>
+            (p.httpCalls || []).map(c => ({
+                ...c,
+                requestId: p.id,
+                requestUrl: p.url,
+                requestMethod: p.method,
+            }))
+        );
+        // Sort slowest first
+        allCalls.sort((a, b) => b.duration - a.duration);
+        return allCalls;
     }
 
     /**

@@ -1,6 +1,6 @@
 {
   "name": "nestjs-profiler",
-  "version": "1.0.22",
+  "version": "1.0.24",
   "description": "A NestJS module for profiling HTTP requests, database queries, and cache operations. Inspired by Symfony Profiler, it provides a web-based dashboard to inspect request duration, executed queries, log messages, and explain plans for slow queries.",
   "author": "Mohamed Raslan",
   "private": false,
@@ -49,6 +49,7 @@
     "profiler"
   ],
   "dependencies": {
+    "@nestjs/platform-express": "^11.1.26",
     "reflect-metadata": "^0.2.2"
   },
   "devDependencies": {
@@ -98,14 +99,14 @@
     "testEnvironment": "node"
   },
   "peerDependencies": {
-    "@nestjs/cache-manager": ">=2.0.0",
-    "@nestjs/common": "^9.0.0 || ^10.0.0 || ^11.0.0",
-    "@nestjs/core": "^9.0.0 || ^10.0.0 || ^11.0.0",
+    "@nestjs/cache-manager": "^3.1.2",
+    "@nestjs/common": "^11.1.26",
+    "@nestjs/core": "^11.1.26",
     "cache-manager": ">=5.0.0",
     "mongodb": ">=4.0.0",
     "mysql2": ">=2.0.0",
-    "pg": ">=8.0.0",
-    "rxjs": ">=7.0.0"
+    "pg": "^8.21.0",
+    "rxjs": "^7.8.2"
   },
   "peerDependenciesMeta": {
     "pg": {

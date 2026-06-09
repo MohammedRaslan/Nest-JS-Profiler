@@ -19,5 +19,6 @@ export interface ProfilerOptions {
     collectMongo?: boolean;
     collectCache?: boolean;
     collectMysql?: boolean;
+    collectHttp?: boolean;
     explain?: ProfilerExplainOptions;
 }

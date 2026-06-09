@@ -82,6 +82,16 @@ export class ProfilerController {
         return profile;
     }
 
+    @Get('view/summary')
+    async summary(@Res() res: Response) {
+        const stats = await this.profilerService.getSummaryStats();
+        const content = this.templateBuilder.buildSummaryPage(stats);
+        const html = this.viewService.renderWithLayout('Summary', content, 'summary');
+
+        res.header('Content-Type', 'text/html');
+        res.send(html);
+    }
+
     @Get('view/queries')
     async listQueries(@Res() res: Response) {
         const queries = await this.profilerService.getQueriesList();
@@ -130,6 +140,75 @@ export class ProfilerController {
 
         res.header('Content-Type', 'text/html');
         res.send(html);
+    }
+
+    @Get('view/http-calls')
+    async listHttpCalls(@Res() res: Response) {
+        const calls = await this.profilerService.getHttpCallsList();
+        const content = this.templateBuilder.buildHttpCallsList(calls);
+        const html = this.viewService.renderWithLayout('Outbound HTTP', content, 'http-calls');
+
+        res.header('Content-Type', 'text/html');
+        res.send(html);
+    }
+
+    @Get('view/logs/live')
+    async liveLogsPage(@Res() res: Response) {
+        const html = this.viewService.renderWithLayout('Live Logs', this.templateBuilder.buildLiveLogsPage(), 'live-logs');
+        res.header('Content-Type', 'text/html');
+        res.send(html);
+    }
+
+    @Get('logs/stream')
+    liveLogsStream(@Res() res: Response) {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+        res.flushHeaders();
+
+        // Increase max listeners to avoid Node.js warning when multiple tabs are open
+        this.profilerService.logEmitter.setMaxListeners(
+            this.profilerService.logEmitter.getMaxListeners() + 1
+        );
+
+        // Immediately confirm the channel is open
+        res.write(`data: ${JSON.stringify({ level: 'system', message: 'Stream connected', timestamp: Date.now() })}\n\n`);
+
+        // --- Batching: collect logs for 50ms then flush as a single SSE event ---
+        // This dramatically reduces the number of HTTP chunks under high log volume.
+        let batch: any[] = [];
+        let batchTimer: ReturnType<typeof setTimeout> | null = null;
+
+        const flush = () => {
+            batchTimer = null;
+            if (batch.length === 0 || (res as any).writableEnded) return;
+            const payload = batch.splice(0);
+            res.write(`data: ${JSON.stringify(payload)}\n\n`);
+            if (typeof (res as any).flush === 'function') (res as any).flush();
+        };
+
+        const onLog = (log: any) => {
+            if ((res as any).writableEnded) return;
+            batch.push(log);
+            if (!batchTimer) batchTimer = setTimeout(flush, 50);
+        };
+
+        // Heartbeat every 15s keeps proxies from closing idle connections
+        const heartbeat = setInterval(() => {
+            if (!(res as any).writableEnded) res.write(': heartbeat\n\n');
+        }, 15_000);
+
+        this.profilerService.logEmitter.on('log', onLog);
+
+        res.on('close', () => {
+            clearInterval(heartbeat);
+            if (batchTimer) clearTimeout(batchTimer);
+            this.profilerService.logEmitter.off('log', onLog);
+            this.profilerService.logEmitter.setMaxListeners(
+                Math.max(1, this.profilerService.logEmitter.getMaxListeners() - 1)
+            );
+        });
     }
 
     @Get('assets/:file')
