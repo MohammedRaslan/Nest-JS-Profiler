@@ -4,8 +4,9 @@ import { ProfilerService } from '../services/profiler.service';
 import { ViewService } from '../services/view.service';
 import { TemplateBuilderService } from '../services/template-builder.service';
 import { EntityExplorerService } from '../services/entity-explorer.service';
-
 import { RouteExplorerService } from '../services/route-explorer.service';
+import { HealthService } from '../services/health.service';
+import { CodeQualityService } from '../services/code-quality.service';
 
 @Controller('__profiler')
 export class ProfilerController {
@@ -15,14 +16,20 @@ export class ProfilerController {
         private readonly templateBuilder: TemplateBuilderService,
         private readonly entityExplorer: EntityExplorerService,
         private readonly routeExplorer: RouteExplorerService,
+        private readonly healthService: HealthService,
+        private readonly codeQualityService: CodeQualityService,
     ) { }
 
     @Get()
     async dashboard(@Res() res: Response) {
+        res.redirect('/__profiler/view/summary');
+    }
+
+    @Get('view/requests')
+    async requestsList(@Res() res: Response) {
         const profiles = await this.profilerService.getDashboardData();
         const content = this.templateBuilder.buildDashboard(profiles);
         const html = this.viewService.renderWithLayout('Requests', content, 'requests');
-
         res.header('Content-Type', 'text/html');
         res.send(html);
     }
@@ -150,6 +157,30 @@ export class ProfilerController {
 
         res.header('Content-Type', 'text/html');
         res.send(html);
+    }
+
+    @Get('view/health')
+    async healthPage(@Res() res: Response) {
+        const html = this.viewService.renderWithLayout('Health', this.templateBuilder.buildHealthPage(), 'health');
+        res.header('Content-Type', 'text/html');
+        res.send(html);
+    }
+
+    @Get('api/health')
+    async healthAudit(@Query('force') force?: string) {
+        return this.healthService.runHealthCheck(force === 'true');
+    }
+
+    @Get('view/code-quality')
+    async codeQualityPage(@Res() res: Response) {
+        const html = this.viewService.renderWithLayout('Code Quality', this.templateBuilder.buildCodeQualityPage(), 'code-quality');
+        res.header('Content-Type', 'text/html');
+        res.send(html);
+    }
+
+    @Get('api/code-quality')
+    async codeQualityAudit(@Query('force') force?: string) {
+        return this.codeQualityService.runCheck(force === 'true');
     }
 
     @Get('view/logs/live')

@@ -19,6 +19,8 @@ import { MysqlCollector } from './collectors/mysql-collector';
 import { LogCollector } from './collectors/log-collector';
 import { CacheCollector } from './collectors/cache-collector';
 import { HttpCollector } from './collectors/http-collector';
+import { HealthService } from './services/health.service';
+import { CodeQualityService } from './services/code-quality.service';
 import { ExplainAnalyzer } from './analyzers/explain-analyzer';
 import { InMemoryProfilerStorage } from './storage/in-memory-profiler-storage';
 import { ProfilerController } from './controllers/profiler.controller';
@@ -79,6 +81,8 @@ export class ProfilerModule implements NestModule {
         LogCollector,
         CacheCollector,
         HttpCollector,
+        HealthService,
+        CodeQualityService,
         ExplainAnalyzer,
         {
           provide: APP_INTERCEPTOR,

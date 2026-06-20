@@ -1,0 +1,468 @@
+<div id="healthRoot">
+
+  <!-- ── Idle / intro state — shown by default; JS replaces it immediately ── -->
+  <div id="idleState" class="bg-white rounded-xl border border-gray-200 shadow-sm p-10">
+    <div class="max-w-lg mx-auto text-center">
+      <div class="flex justify-center mb-5">
+        <div class="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center">
+          <svg class="w-7 h-7 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+        </div>
+      </div>
+      <h2 class="text-lg font-semibold text-gray-800 mb-1">Package Health</h2>
+      <p class="text-sm text-gray-500 mb-6">Runs <code class="bg-gray-100 px-1 rounded">npm audit</code> and <code class="bg-gray-100 px-1 rounded">npm outdated</code> to surface vulnerabilities and stale dependencies.</p>
+      <button onclick="window.__profilerRunHealthAudit && window.__profilerRunHealthAudit()"
+        class="px-4 py-2 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white">
+        Run Health Audit
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Loading state ────────────────────────────────────────────────────── -->
+  <div id="loadingState" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm p-10">
+    <div class="max-w-lg mx-auto text-center">
+      <!-- Icon -->
+      <div class="flex justify-center mb-5">
+        <div class="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center">
+          <svg class="w-7 h-7 text-indigo-500 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+        </div>
+      </div>
+
+      <h2 class="text-lg font-semibold text-gray-800 mb-1">Running security audit…</h2>
+      <p id="loadingLabel" class="text-sm text-gray-500 mb-6">Connecting to npm registry</p>
+
+      <!-- Progress bar track -->
+      <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+        <div id="progressBar"
+          class="h-2.5 rounded-full bg-indigo-500 transition-all duration-700 ease-out"
+          style="width: 0%">
+        </div>
+      </div>
+
+      <!-- Step labels -->
+      <div class="mt-5 flex justify-between text-xs text-gray-400">
+        <span id="step1" class="font-medium">npm audit</span>
+        <span id="step2">npm outdated</span>
+        <span id="step3">Analysing results</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Error state ────────────────────────────────────────────────────── -->
+  <div id="errorState" class="hidden bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+    <svg class="w-10 h-10 text-red-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <p class="text-red-700 font-semibold mb-1">Audit failed</p>
+    <p id="errorMsg" class="text-red-500 text-sm mb-4"></p>
+    <button onclick="window.__profilerRunHealthAudit()" class="px-4 py-2 text-sm font-medium rounded-lg bg-red-100 hover:bg-red-200 text-red-700">
+      Try again
+    </button>
+  </div>
+
+  <!-- ── Results state ──────────────────────────────────────────────────── -->
+  <div id="resultsState" class="hidden space-y-6">
+
+    <!-- Header bar -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-bold text-gray-800">Package Health</h2>
+        <p id="scanMeta" class="text-xs text-gray-400 mt-0.5"></p>
+      </div>
+      <button onclick="window.__profilerRunHealthAudit()"
+        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-600">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        Re-run audit
+      </button>
+    </div>
+
+    <!-- ── Environment cards ── -->
+    <div id="envCards" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+
+    <!-- ── Severity summary cards ── -->
+    <div id="severityCards" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+
+    <!-- ── Vulnerabilities table ── -->
+    <div id="vulnSection" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+        <h3 class="text-sm font-bold text-gray-600 uppercase tracking-widest">Vulnerabilities</h3>
+        <span id="vulnCount" class="text-xs text-gray-400"></span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+            <tr>
+              <th class="px-4 py-2 text-left w-24">Severity</th>
+              <th class="px-4 py-2 text-left">Package</th>
+              <th class="px-4 py-2 text-left">Vulnerable range</th>
+              <th class="px-4 py-2 text-left w-20">Direct</th>
+              <th class="px-4 py-2 text-left">Fix</th>
+            </tr>
+          </thead>
+          <tbody id="vulnBody" class="divide-y divide-gray-100"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Outdated packages table ── -->
+    <div id="outdatedSection" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+        <h3 class="text-sm font-bold text-gray-600 uppercase tracking-widest">Outdated Packages</h3>
+        <span id="outdatedCount" class="text-xs text-gray-400"></span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+            <tr>
+              <th class="px-4 py-2 text-left">Package</th>
+              <th class="px-4 py-2 text-center">Current</th>
+              <th class="px-4 py-2 text-center">Wanted</th>
+              <th class="px-4 py-2 text-center">Latest</th>
+              <th class="px-4 py-2 text-left">Status</th>
+            </tr>
+          </thead>
+          <tbody id="outdatedBody" class="divide-y divide-gray-100"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── All-clear state ── -->
+    <div id="allClear" class="hidden bg-green-50 border border-green-200 rounded-xl p-8 text-center">
+      <svg class="w-12 h-12 text-green-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <p class="text-green-700 font-semibold text-lg">No vulnerabilities found</p>
+      <p class="text-green-500 text-sm mt-1">All packages are up to date and secure.</p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ── Severity config ───────────────────────────────────────────────────────
+  const SEV = {
+    critical: { label: 'Critical', bg: 'bg-red-50',     text: 'text-red-700',    badge: 'bg-red-100 text-red-700',    icon: '🔴' },
+    high:     { label: 'High',     bg: 'bg-orange-50',  text: 'text-orange-700', badge: 'bg-orange-100 text-orange-700', icon: '🟠' },
+    moderate: { label: 'Moderate', bg: 'bg-yellow-50',  text: 'text-yellow-700', badge: 'bg-yellow-100 text-yellow-700', icon: '🟡' },
+    low:      { label: 'Low',      bg: 'bg-blue-50',    text: 'text-blue-700',   badge: 'bg-blue-100 text-blue-700',  icon: '🔵' },
+    info:     { label: 'Info',     bg: 'bg-gray-50',    text: 'text-gray-600',   badge: 'bg-gray-100 text-gray-600',  icon: '⚪' },
+  };
+
+  // ── Progress simulation ───────────────────────────────────────────────────
+  const STEPS = [
+    { pct: 15, label: 'Connecting to npm registry…', step: 'step1' },
+    { pct: 40, label: 'Running npm audit…',           step: 'step1' },
+    { pct: 70, label: 'Checking outdated packages…',  step: 'step2' },
+    { pct: 88, label: 'Analysing results…',           step: 'step3' },
+  ];
+
+  let progressTimer = null;
+  let stepIndex     = 0;
+
+  function startProgress() {
+    stepIndex = 0;
+    setProgress(0, 'Connecting to npm registry…');
+
+    progressTimer = setInterval(() => {
+      if (stepIndex >= STEPS.length) { clearInterval(progressTimer); return; }
+      const s = STEPS[stepIndex++];
+      setProgress(s.pct, s.label);
+      document.querySelectorAll('#loadingState .flex.justify-between span').forEach(el => {
+        el.classList.remove('text-indigo-600', 'font-semibold');
+      });
+      const active = document.getElementById(s.step);
+      if (active) active.classList.add('text-indigo-600', 'font-semibold');
+    }, 1200);
+  }
+
+  function setProgress(pct, label) {
+    const bar = document.getElementById('progressBar');
+    const lbl = document.getElementById('loadingLabel');
+    if (bar) bar.style.width = pct + '%';
+    if (lbl) lbl.textContent = label;
+  }
+
+  function finishProgress(cb) {
+    clearInterval(progressTimer);
+    setProgress(100, 'Done!');
+    setTimeout(cb, 500);
+  }
+
+  // ── State switches ────────────────────────────────────────────────────────
+  function hideAll() {
+    ['idleState','loadingState','errorState','resultsState'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('hidden');
+    });
+  }
+
+  function showLoading() {
+    hideAll();
+    const el = document.getElementById('loadingState');
+    if (el) el.classList.remove('hidden');
+  }
+
+  function showError(msg) {
+    clearInterval(progressTimer);
+    hideAll();
+    const el = document.getElementById('errorState');
+    if (el) el.classList.remove('hidden');
+    const msgEl = document.getElementById('errorMsg');
+    if (msgEl) msgEl.textContent = msg;
+  }
+
+  function showResults(data) {
+    hideAll();
+    const el = document.getElementById('resultsState');
+    if (el) el.classList.remove('hidden');
+    renderResults(data);
+  }
+
+  // ── Rendering ─────────────────────────────────────────────────────────────
+  function renderResults(data) {
+    renderEnvCards(data);
+    renderSeverityCards(data);
+    renderVulnerabilities(data);
+    renderOutdated(data);
+
+    // Scan metadata + cached badge
+    const meta = document.getElementById('scanMeta');
+    if (meta) {
+      const time     = new Date(data.scannedAt).toLocaleTimeString();
+      const fromCache = data.fromCache;
+      const age      = Math.round((Date.now() - data.scannedAt) / 1000);
+      const ageLabel = age < 60 ? `${age}s ago` : `${Math.round(age / 60)}m ago`;
+      meta.innerHTML = `
+        Scanned with <strong>${data.packageManager}</strong> · ${time}
+        ${fromCache
+          ? `<span class="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500">
+               <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+               Cached · ${ageLabel}
+             </span>`
+          : `<span class="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded-full bg-green-100 text-green-700">
+               <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm-1 14.5v-5l-2 2-1.41-1.41L11 8.67V7h2v1.67l3.41 3.42L15 13.5l-2-2v5h-2z"/></svg>
+               Fresh scan
+             </span>`
+        }`;
+    }
+
+    // All-clear
+    const hasVulns    = data.audit?.metadata?.vulnerabilities?.total > 0;
+    const hasOutdated = Object.keys(data.outdated || {}).length > 0;
+    document.getElementById('allClear').classList.toggle('hidden', hasVulns || hasOutdated);
+  }
+
+  function renderEnvCards(data) {
+    const nodeOk = checkNodeEngine(data.nodeVersion, data.engines?.node);
+    document.getElementById('envCards').innerHTML = [
+      envCard('Node.js', data.nodeVersion, nodeOk ? 'green' : 'yellow', nodeOk ? 'Meets engines requirement' : 'Check engines field'),
+      envCard('npm', `v${data.npmVersion}`, 'gray', 'Package manager'),
+      envCard('Package manager', data.packageManager, 'gray', 'Detected from lock file'),
+      data.engines ? envCard('engines.node', data.engines.node || 'not set', 'gray', 'From package.json') : '',
+    ].join('');
+  }
+
+  function envCard(label, value, color, sub) {
+    const colors = {
+      green:  'bg-green-50 border-green-200 text-green-700',
+      yellow: 'bg-yellow-50 border-yellow-200 text-yellow-700',
+      gray:   'bg-gray-50 border-gray-200 text-gray-700',
+    };
+    return `
+      <div class="rounded-lg border ${colors[color]} p-3">
+        <div class="text-xs text-gray-400 mb-1">${label}</div>
+        <div class="font-semibold text-sm">${value}</div>
+        <div class="text-xs mt-0.5 opacity-70">${sub}</div>
+      </div>`;
+  }
+
+  function renderSeverityCards(data) {
+    // Hide severity cards entirely when audit didn't run
+    const el = document.getElementById('severityCards');
+    if (!data.audit) { if (el) el.classList.add('hidden'); return; }
+    if (el) el.classList.remove('hidden');
+    const counts = data.audit?.metadata?.vulnerabilities || {};
+    const order  = ['critical', 'high', 'moderate', 'low'];
+    document.getElementById('severityCards').innerHTML = order.map(sev => {
+      const n   = counts[sev] || 0;
+      const cfg = SEV[sev];
+      const ring = n > 0 ? 'ring-2 ring-offset-1 ' + (sev === 'critical' ? 'ring-red-300' : sev === 'high' ? 'ring-orange-300' : sev === 'moderate' ? 'ring-yellow-300' : 'ring-blue-300') : '';
+      return `
+        <div class="rounded-xl border ${cfg.bg} p-4 text-center ${ring}">
+          <div class="text-3xl font-bold ${cfg.text}">${n}</div>
+          <div class="text-xs font-semibold ${cfg.text} uppercase tracking-widest mt-1">${cfg.label}</div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderVulnerabilities(data) {
+    const section = document.getElementById('vulnSection');
+
+    // Audit failed (network/registry unreachable) — show inline warning, still render outdated
+    if (!data.audit && data.error) {
+      section.classList.remove('hidden');
+      document.getElementById('vulnCount').textContent = '';
+      document.getElementById('vulnBody').innerHTML = `
+        <tr><td colspan="5" class="px-4 py-6">
+          <div class="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div>
+              <p class="text-sm font-semibold text-amber-800">Vulnerability scan unavailable</p>
+              <p class="text-xs text-amber-600 mt-0.5">${data.error}</p>
+            </div>
+          </div>
+        </td></tr>`;
+      return;
+    }
+
+    const vulns = Object.values(data.audit?.vulnerabilities || {});
+    const body  = document.getElementById('vulnBody');
+    const count = document.getElementById('vulnCount');
+
+    if (!vulns.length) { section.classList.add('hidden'); return; }
+    section.classList.remove('hidden');
+    count.textContent = `${vulns.length} package${vulns.length !== 1 ? 's' : ''} affected`;
+
+    // Sort: critical → high → moderate → low → info
+    const order = ['critical', 'high', 'moderate', 'low', 'info'];
+    vulns.sort((a, b) => order.indexOf(a.severity) - order.indexOf(b.severity));
+
+    body.innerHTML = vulns.map(v => {
+      const cfg  = SEV[v.severity] || SEV.info;
+      const fix  = v.fixAvailable === true
+        ? `<span class="text-green-600 text-xs font-medium">✓ Available</span>`
+        : typeof v.fixAvailable === 'object' && v.fixAvailable
+          ? `<span class="text-yellow-600 text-xs font-medium">⚠ Breaking (${v.fixAvailable.name}@${v.fixAvailable.version})</span>`
+          : `<span class="text-gray-400 text-xs">None</span>`;
+      const via  = Array.isArray(v.via) ? v.via.filter(x => typeof x === 'string').join(', ') : '';
+
+      return `
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3">
+            <span class="inline-block text-xs font-semibold px-2 py-0.5 rounded ${cfg.badge}">${cfg.label}</span>
+          </td>
+          <td class="px-4 py-3">
+            <div class="font-mono text-sm font-semibold text-gray-800">${v.name}</div>
+            ${via ? `<div class="text-xs text-gray-400 mt-0.5">via ${via}</div>` : ''}
+          </td>
+          <td class="px-4 py-3 font-mono text-xs text-gray-500">${v.range || '-'}</td>
+          <td class="px-4 py-3 text-center text-xs">${v.isDirect ? '<span class="text-indigo-600 font-medium">Direct</span>' : '<span class="text-gray-400">Transitive</span>'}</td>
+          <td class="px-4 py-3">${fix}</td>
+        </tr>`;
+    }).join('');
+  }
+
+  function renderOutdated(data) {
+    const entries  = Object.entries(data.outdated || {});
+    const section  = document.getElementById('outdatedSection');
+    const body     = document.getElementById('outdatedBody');
+    const count    = document.getElementById('outdatedCount');
+
+    if (!entries.length) { section.classList.add('hidden'); return; }
+    section.classList.remove('hidden');
+    count.textContent = `${entries.length} package${entries.length !== 1 ? 's' : ''}`;
+
+    body.innerHTML = entries.map(([name, pkg]) => {
+      const isMajor  = pkg.latest && pkg.current && pkg.latest.split('.')[0] !== pkg.current.split('.')[0];
+      const isWanted = pkg.current !== pkg.wanted;
+      const badge    = isMajor
+        ? '<span class="text-xs font-semibold px-1.5 py-0.5 rounded bg-red-100 text-red-700">Major update</span>'
+        : isWanted
+          ? '<span class="text-xs font-semibold px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700">Update available</span>'
+          : '<span class="text-xs font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Latest available</span>';
+      return `
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 font-mono text-sm font-semibold text-gray-800">${name}</td>
+          <td class="px-4 py-3 text-center font-mono text-xs text-gray-500">${pkg.current || '-'}</td>
+          <td class="px-4 py-3 text-center font-mono text-xs ${isWanted ? 'text-yellow-600 font-semibold' : 'text-gray-500'}">${pkg.wanted || '-'}</td>
+          <td class="px-4 py-3 text-center font-mono text-xs ${isMajor ? 'text-red-600 font-semibold' : 'text-green-600'}">${pkg.latest || '-'}</td>
+          <td class="px-4 py-3">${badge}</td>
+        </tr>`;
+    }).join('');
+  }
+
+  function checkNodeEngine(current, required) {
+    if (!required || !current) return true;
+    // Basic semver check: just compare major versions
+    try {
+      const curMajor = parseInt(current.replace('v', '').split('.')[0]);
+      const reqMatch = required.match(/(\d+)/);
+      if (reqMatch) return curMajor >= parseInt(reqMatch[1]);
+    } catch { /* ignore */ }
+    return true;
+  }
+
+  // ── Client-side cache (survives SPA navigation) ───────────────────────────
+  // Stored on window so it persists when the layout re-injects this page's HTML
+  if (!window.__profilerHealthCache) window.__profilerHealthCache = null;
+
+  // Cancel any in-flight fetch from a previous navigation
+  if (window.__profilerHealthAbort) {
+    window.__profilerHealthAbort.abort();
+    window.__profilerHealthAbort = null;
+  }
+  if (window.__profilerHealthProgressTimer) {
+    clearInterval(window.__profilerHealthProgressTimer);
+    window.__profilerHealthProgressTimer = null;
+  }
+
+  // Override startProgress / finishProgress to track timers globally
+  const _startProgress = startProgress;
+  startProgress = function() {
+    _startProgress();
+    window.__profilerHealthProgressTimer = progressTimer;
+  };
+
+  // ── Main fetch ────────────────────────────────────────────────────────────
+  async function runAudit(force = false) {
+    // If not forced and we have a client-side cache, show it instantly
+    if (!force && window.__profilerHealthCache) {
+      showResults(window.__profilerHealthCache);
+      return;
+    }
+
+    showLoading();
+    startProgress();
+
+    const controller = new AbortController();
+    window.__profilerHealthAbort = controller;
+
+    try {
+      const url  = force ? '/__profiler/api/health?force=true' : '/__profiler/api/health';
+      const res  = await fetch(url, { signal: controller.signal });
+      const data = await res.json();
+
+      window.__profilerHealthCache  = data;
+      window.__profilerHealthAbort  = null;
+
+      finishProgress(() => {
+        // Always show results — audit errors are rendered inline
+        showResults(data);
+      });
+    } catch (e) {
+      if (e.name === 'AbortError') return; // navigated away — silently ignore
+      showError(e.message || 'Could not reach /__profiler/api/health');
+    }
+  }
+
+  // Re-run button calls this
+  window.__profilerRunHealthAudit = () => runAudit(true);
+
+  // On load: show cache instantly if available, else auto-start fresh audit
+  try {
+    runAudit(false);
+  } catch(e) {
+    showError('Failed to start audit: ' + e.message);
+  }
+</script>

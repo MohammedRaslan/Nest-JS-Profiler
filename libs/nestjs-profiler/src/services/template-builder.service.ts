@@ -11,6 +11,16 @@ export class TemplateBuilderService {
         return this.viewService.render('live-logs', {});
     }
 
+    /** Build health page shell — all data fetched client-side via /__profiler/api/health */
+    buildHealthPage(): string {
+        return this.viewService.render('health', {});
+    }
+
+    /** Build code quality page shell — all data fetched client-side via /__profiler/api/code-quality */
+    buildCodeQualityPage(): string {
+        return this.viewService.render('code-quality', {});
+    }
+
     /**
      * Build the summary/stats dashboard page
      */
@@ -91,7 +101,7 @@ export class TemplateBuilderService {
                 ${stats.topSlowEndpoints.map(e => `
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3">
-                            <a href="/__profiler?search=${encodeURIComponent(e.route)}" class="group inline-flex items-center gap-1.5 hover:underline">
+                            <a href="/__profiler/view/requests?search=${encodeURIComponent(e.route)}" class="group inline-flex items-center gap-1.5 hover:underline">
                                 <span class="inline-block text-xs font-semibold px-1.5 py-0.5 rounded ${this.getMethodBadgeClass(e.method)}">${e.method}</span>
                                 <span class="font-mono text-xs text-gray-700 group-hover:text-indigo-600 truncate">${e.route}</span>
                             </a>

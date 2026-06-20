@@ -4,7 +4,7 @@
   <img src="https://raw.githubusercontent.com/MohammedRaslan/Nest-JS-Profiler/refs/heads/main/libs/nestjs-profiler/src/assets/logo.png" width="400" alt="NestJS Profiler Logo" />
 </p>
 
-A NestJS module for profiling HTTP requests, database queries, cache operations, outbound HTTP calls, and application logs. Inspired by Symfony Profiler, it provides a web-based dashboard to inspect everything that happens inside a request — from DB queries to downstream API calls — in real time.
+A NestJS module for profiling HTTP requests, database queries, cache operations, outbound HTTP calls, application logs, package health, and code quality. Inspired by Symfony Profiler, it provides a web-based dashboard to inspect everything that happens inside a request — from DB queries to downstream API calls — in real time.
 
 ## Features
 
@@ -23,6 +23,8 @@ A NestJS module for profiling HTTP requests, database queries, cache operations,
 - **Summary Dashboard** — Aggregate statistics: avg/p95 duration, error rate, cache hit rate, top slow endpoints, top slow queries, and recent errors.
 - **Entity Explorer** — Lists all registered TypeORM/MikroORM entities and their columns.
 - **Route Explorer** — Lists all registered routes with their controllers and handlers.
+- **Package Health** — Runs `npm audit` and `npm outdated` to surface known vulnerabilities and stale dependencies. Results are cached for 5 minutes. Works with npm, yarn, and pnpm. If the registry is unreachable, outdated packages are still shown with an inline warning.
+- **Code Quality** — Runs ESLint and TypeScript compiler checks (`tsc --noEmit`) against your source code. Issues are displayed grouped by file or by rule, with direct links to ESLint rule docs and TypeScript error references. Auto-fixable issues are flagged. File paths are copyable with one click.
 - **Web UI** — Built-in dashboard at `/__profiler` with no external dependencies.
 - **Zero Hard Dependencies** — Core functionality works out of the box; database drivers are optional peer dependencies.
 
@@ -149,8 +151,9 @@ Navigate to `http://localhost:3000/__profiler`.
 
 | Path | Description |
 |---|---|
-| `/__profiler` | Request list — all captured requests |
+| `/__profiler` | Redirects to Summary (default landing page) |
 | `/__profiler/view/summary` | Aggregate stats: avg/p95 duration, error rate, top slow endpoints |
+| `/__profiler/view/requests` | All captured requests |
 | `/__profiler/view/queries` | All database queries across requests, sorted by duration |
 | `/__profiler/view/http-calls` | All outbound HTTP calls across requests, sorted by duration |
 | `/__profiler/view/logs` | Paginated application logs |
@@ -158,6 +161,8 @@ Navigate to `http://localhost:3000/__profiler`.
 | `/__profiler/view/cache` | Cache operations with hit/miss breakdown |
 | `/__profiler/view/entities` | Registered database entities |
 | `/__profiler/view/routes` | All registered application routes |
+| `/__profiler/view/health` | Package vulnerabilities and outdated dependency report |
+| `/__profiler/view/code-quality` | ESLint and TypeScript static analysis report |
 | `/__profiler/:id` | Full detail view for a single request |
 
 ### 3. Outbound HTTP Tracking
@@ -181,7 +186,50 @@ To disable:
 ProfilerModule.forRoot({ collectHttp: false })
 ```
 
-### 4. JSON API
+### 4. Package Health
+
+The Health tab runs `npm audit` and `npm outdated` from your project root and displays the results in a searchable UI.
+
+- **Vulnerabilities** — sorted by severity (critical → high → moderate → low), with fix availability and whether the package is a direct or transitive dependency.
+- **Outdated packages** — shows current, wanted, and latest versions with major-update warnings.
+- Results are **cached for 5 minutes** server-side. Navigating back to the tab shows the cached result instantly without re-running. Click **Re-run audit** to force a fresh scan.
+- If `npm audit` cannot reach the registry (e.g. VPN or proxy), the outdated packages section still renders with an inline warning for the unavailable audit.
+- No configuration required — works automatically for npm, yarn, and pnpm projects.
+
+#### JSON endpoint
+
+```
+GET /__profiler/api/health           # cached result (5 min TTL)
+GET /__profiler/api/health?force=true  # force fresh scan
+```
+
+### 5. Code Quality
+
+The Code Quality tab runs static analysis tools against your source code and surfaces every issue without AI or external services.
+
+**ESLint** — uses your project's existing ESLint configuration (`node_modules/.bin/eslint`). Results are shown in two views:
+
+- **By File** — expandable accordion rows per file. Each issue shows line:column, severity badge, message, fix indicator (⚡ auto-fixable), and a clickable rule badge linking to the ESLint documentation.
+- **By Rule** — sorted by severity then count, showing how many files are affected per rule.
+
+**TypeScript** — runs `tsc --noEmit` using your project's `tsconfig.json`. Each error links to `typescript.tv/errors` for explanations.
+
+**Summary cards** show total issues, errors, warnings, auto-fixable count, and files affected at a glance.
+
+File paths have a **copy-to-clipboard** button that appears on hover, making it easy to jump to the file in your editor.
+
+Results are cached for 5 minutes. Click **Re-run** to force a fresh analysis.
+
+> **Note:** Code Quality only lints the `src/` directory (or project root if `src/` doesn't exist) and automatically ignores `dist/`, `build/`, `coverage/`, and other generated directories.
+
+#### JSON endpoint
+
+```
+GET /__profiler/api/code-quality             # cached result (5 min TTL)
+GET /__profiler/api/code-quality?force=true  # force fresh scan
+```
+
+### 6. JSON API
 
 Retrieve profile data programmatically:
 

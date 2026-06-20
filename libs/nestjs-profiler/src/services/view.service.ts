@@ -54,7 +54,9 @@ export class ViewService {
             routesActive: active('routes'),
             cacheActive: active('cache'),
             httpCallsActive: active('http-calls'),
+            healthActive: active('health'),
             liveLogsActive: active('live-logs'),
+            codeQualityActive: active('code-quality'),
             summaryIconClass: activeIcon('summary'),
             requestsIconClass: activeIcon('requests'),
             queriesIconClass: activeIcon('queries'),
@@ -63,7 +65,9 @@ export class ViewService {
             routesIconClass: activeIcon('routes'),
             cacheIconClass: activeIcon('cache'),
             httpCallsIconClass: activeIcon('http-calls'),
+            healthIconClass: activeIcon('health'),
             liveLogsIconClass: activeIcon('live-logs'),
+            codeQualityIconClass: activeIcon('code-quality'),
         };
 
         layout = this.interpolate(layout, data);
