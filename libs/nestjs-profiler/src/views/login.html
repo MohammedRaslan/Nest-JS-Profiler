@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <!-- If already authenticated, skip login immediately -->
+  <script>
+  (function () {
+    var stored, data;
+    try { stored = localStorage.getItem('__profiler_auth'); data = stored ? JSON.parse(stored) : null; } catch (e) { data = null; }
+    if (data && data.expiresAt && Date.now() < data.expiresAt) {
+      var params = new URLSearchParams(location.search);
+      location.replace(params.get('returnTo') || '/__profiler');
+    }
+  })();
+  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NestJS Profiler — Sign In</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    * { font-family: 'Inter', system-ui, sans-serif; }
+    body { background: #0f172a; min-height: 100vh; }
+
+    .orb { position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.15; animation: drift 12s ease-in-out infinite; pointer-events: none; }
+    .orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, #6366f1, transparent 70%); top: -200px; left: -200px; }
+    .orb-2 { width: 500px; height: 500px; background: radial-gradient(circle, #818cf8, transparent 70%); bottom: -150px; right: -150px; animation-delay: -6s; }
+    @keyframes drift {
+      0%, 100% { transform: translate(0,0) scale(1); }
+      33%       { transform: translate(30px,-20px) scale(1.05); }
+      66%       { transform: translate(-20px,30px) scale(0.95); }
+    }
+
+    .glass-card {
+      background: rgba(15,23,42,0.85);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(99,102,241,0.2);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.04) inset, 0 32px 64px rgba(0,0,0,0.6), 0 0 80px rgba(99,102,241,0.08);
+    }
+
+    .auth-input {
+      background: rgba(15,23,42,0.7);
+      border: 1px solid rgba(71,85,105,0.6);
+      color: #e2e8f0;
+      transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+    .auth-input::placeholder { color: #475569; }
+    .auth-input:focus {
+      outline: none;
+      border-color: #6366f1;
+      background: rgba(15,23,42,0.9);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.15), 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .auth-input.error { border-color: rgba(239,68,68,0.6); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+      box-shadow: 0 4px 16px rgba(99,102,241,0.35), 0 1px 3px rgba(0,0,0,0.3);
+      transition: all .2s;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+      box-shadow: 0 6px 24px rgba(99,102,241,0.5), 0 2px 6px rgba(0,0,0,0.4);
+      transform: translateY(-1px);
+    }
+    .btn-primary:active:not(:disabled) { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .logo-ring {
+      background: rgba(99,102,241,0.1);
+      border: 1px solid rgba(99,102,241,0.25);
+      box-shadow: 0 0 32px rgba(99,102,241,0.15);
+    }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%      { transform: translateX(-6px); }
+      40%      { transform: translateX(6px); }
+      60%      { transform: translateX(-4px); }
+      80%      { transform: translateX(4px); }
+    }
+    .shake { animation: shake 0.4s ease; }
+
+    .spinner { width:18px; height:18px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+  </style>
+</head>
+<body class="h-full flex items-center justify-center p-4">
+
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <div class="glass-card rounded-2xl w-full max-w-md p-10 relative z-10" id="card">
+
+    <!-- Logo -->
+    <div class="flex flex-col items-center mb-10">
+      <div class="logo-ring w-20 h-20 rounded-2xl flex items-center justify-center mb-5">
+        <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="44" height="44" rx="10" fill="rgba(99,102,241,0.15)"/>
+          <circle cx="19" cy="18" r="8" stroke="#818cf8" stroke-width="2.5" fill="none"/>
+          <line x1="24.5" y1="24.5" x2="32" y2="32" stroke="#818cf8" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="19" cy="18" r="3" fill="#6366f1" opacity="0.8"/>
+          <rect x="10" y="32" width="3" height="5" rx="1" fill="#6366f1" opacity="0.6"/>
+          <rect x="15" y="29" width="3" height="8" rx="1" fill="#6366f1" opacity="0.8"/>
+          <rect x="20" y="31" width="3" height="6" rx="1" fill="#818cf8" opacity="0.7"/>
+          <rect x="25" y="27" width="3" height="10" rx="1" fill="#818cf8" opacity="0.9"/>
+          <rect x="30" y="30" width="3" height="7" rx="1" fill="#6366f1" opacity="0.6"/>
+        </svg>
+      </div>
+      <h1 class="text-2xl font-bold text-white tracking-tight">NestJS Profiler</h1>
+      <p class="text-slate-400 text-sm mt-1.5 text-center">This area is protected. Sign in to continue.</p>
+    </div>
+
+    <!-- Error banner -->
+    <div id="errorBanner" class="hidden mb-6 rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 flex items-start gap-3">
+      <svg class="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+      </svg>
+      <span id="errorMsg" class="text-red-300 text-sm"></span>
+    </div>
+
+    <!-- Form -->
+    <div id="loginForm">
+      <!-- Username -->
+      <div class="mb-5">
+        <label for="username" class="block text-sm font-medium text-slate-300 mb-2">Username</label>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+            <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+            </svg>
+          </div>
+          <input id="username" type="text" autocomplete="username" placeholder="Enter your username"
+            class="auth-input w-full rounded-xl pl-10 pr-4 py-3 text-sm" />
+        </div>
+        <p id="usernameError" class="mt-1.5 text-xs text-red-400 hidden">Username is required.</p>
+      </div>
+
+      <!-- Password -->
+      <div class="mb-8">
+        <label for="password" class="block text-sm font-medium text-slate-300 mb-2">Password</label>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+            <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+            </svg>
+          </div>
+          <input id="password" type="password" autocomplete="current-password" placeholder="Enter your password"
+            class="auth-input w-full rounded-xl pl-10 pr-12 py-3 text-sm" />
+          <button type="button" id="togglePassword"
+            class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors">
+            <svg id="eyeIcon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <svg id="eyeSlashIcon" class="w-4 h-4 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/>
+            </svg>
+          </button>
+        </div>
+        <p id="passwordError" class="mt-1.5 text-xs text-red-400 hidden">Password is required.</p>
+      </div>
+
+      <!-- Submit -->
+      <button id="submitBtn" type="button"
+        class="btn-primary w-full rounded-xl py-3.5 text-sm font-semibold text-white flex items-center justify-center gap-2">
+        <span id="btnText">Sign In</span>
+        <div id="btnSpinner" class="spinner hidden"></div>
+      </button>
+    </div>
+
+    <p class="text-center text-xs text-slate-600 mt-8">NestJS Profiler &mdash; RASLAN</p>
+  </div>
+
+  <script>
+  (function () {
+    var returnTo = (new URLSearchParams(location.search)).get('returnTo') || '/__profiler';
+
+    // ── Toggle password visibility ──────────────────────────────────────────
+    var pwdInput   = document.getElementById('password');
+    var eyeIcon    = document.getElementById('eyeIcon');
+    var eyeSlash   = document.getElementById('eyeSlashIcon');
+    document.getElementById('togglePassword').addEventListener('click', function () {
+      var show = pwdInput.type === 'password';
+      pwdInput.type = show ? 'text' : 'password';
+      eyeIcon.classList.toggle('hidden', show);
+      eyeSlash.classList.toggle('hidden', !show);
+    });
+
+    // ── Helpers ─────────────────────────────────────────────────────────────
+    function showError(msg) {
+      var banner = document.getElementById('errorBanner');
+      document.getElementById('errorMsg').textContent = msg;
+      banner.classList.remove('hidden');
+    }
+    function clearErrors() {
+      document.getElementById('errorBanner').classList.add('hidden');
+      document.getElementById('usernameError').classList.add('hidden');
+      document.getElementById('passwordError').classList.add('hidden');
+      document.getElementById('username').classList.remove('error');
+      document.getElementById('password').classList.remove('error');
+    }
+    function setLoading(on) {
+      document.getElementById('btnText').textContent = on ? 'Signing in…' : 'Sign In';
+      document.getElementById('btnSpinner').classList.toggle('hidden', !on);
+      document.getElementById('submitBtn').disabled = on;
+    }
+    function shake() {
+      var card = document.getElementById('card');
+      card.classList.remove('shake');
+      void card.offsetWidth;
+      card.classList.add('shake');
+    }
+
+    // ── Submit ───────────────────────────────────────────────────────────────
+    document.getElementById('submitBtn').addEventListener('click', function () {
+      clearErrors();
+      var username = document.getElementById('username').value.trim();
+      var password = document.getElementById('password').value;
+      var valid = true;
+
+      if (!username) {
+        document.getElementById('usernameError').classList.remove('hidden');
+        document.getElementById('username').classList.add('error');
+        valid = false;
+      }
+      if (!password) {
+        document.getElementById('passwordError').classList.remove('hidden');
+        document.getElementById('password').classList.add('error');
+        valid = false;
+      }
+      if (!valid) { shake(); return; }
+
+      setLoading(true);
+
+      fetch('/__profiler/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, password: password }),
+      })
+      .then(function (r) { return r.json().then(function (d) { return { status: r.status, data: d }; }); })
+      .then(function (result) {
+        if (result.status === 200 || result.status === 201) {
+          // Store token in localStorage
+          localStorage.setItem('__profiler_auth', JSON.stringify({
+            token:     result.data.token,
+            expiresAt: result.data.expiresAt,
+            username:  result.data.username || username,
+          }));
+          location.replace(returnTo);
+        } else {
+          setLoading(false);
+          showError(result.data.error || 'Invalid username or password.');
+          shake();
+          document.getElementById('password').value = '';
+          document.getElementById('password').focus();
+        }
+      })
+      .catch(function () {
+        setLoading(false);
+        showError('Network error — could not reach the server.');
+        shake();
+      });
+    });
+
+    // Allow Enter key to submit
+    ['username', 'password'].forEach(function (id) {
+      document.getElementById(id).addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') document.getElementById('submitBtn').click();
+      });
+    });
+
+    // Auto-focus
+    document.getElementById('username').focus();
+  })();
+  </script>
+</body>
+</html>

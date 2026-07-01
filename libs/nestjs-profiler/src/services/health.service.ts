@@ -101,10 +101,12 @@ export class HealthService {
         cwd: string,
         pm: 'npm' | 'yarn' | 'pnpm',
     ): Promise<{ data: AuditResult | null; error?: string }> {
-        // npm audit exits with code 1 when vulnerabilities are found — we still get valid JSON on stdout
+        // Security advisory data only exists on the public npm registry.
+        // Private registries (Azure Artifacts, Verdaccio, Nexus, etc.) block
+        // the /npm/v1/security/audits endpoint — always force the public registry.
         const cmd = pm === 'yarn'
             ? 'yarn audit --json'
-            : 'npm audit --json --no-update-notifier';
+            : 'npm audit --json --no-update-notifier --registry https://registry.npmjs.org';
         const execOpts = { cwd, timeout: 60_000, env: process.env };
 
         try {
@@ -125,20 +127,27 @@ export class HealthService {
 
             const clean = raw
                 .split('\n')
-                .filter(l =>
-                    l.trim() &&
-                    !l.includes('NODE_TLS_REJECT_UNAUTHORIZED') &&
-                    !l.includes('Warning:') &&
-                    !l.includes('npm warn') &&
-                    !l.includes('node --trace-warnings'),
-                )
-                .slice(0, 5)   // keep first 5 meaningful lines
+                .filter(l => {
+                    if (!l.trim()) return false;
+                    // Always keep actual error lines regardless of other filters
+                    if (l.includes('npm error') || l.includes('npm ERR!') || /\bError\b/.test(l)) return true;
+                    // Filter noise
+                    if (l.includes('NODE_TLS_REJECT_UNAUTHORIZED')) return false;
+                    if (l.includes('Warning:')) return false;
+                    if (l.includes('npm warn')) return false;
+                    if (l.includes('node --trace-warnings')) return false;
+                    if (l.startsWith('Command failed:')) return false;
+                    return true;
+                })
+                .slice(0, 5)
                 .join('\n')
                 .trim();
 
             // Diagnose common causes
             let hint = '';
-            if (raw.includes('ENOTFOUND') || raw.includes('ECONNREFUSED') || raw.includes('ETIMEDOUT') || raw.includes('network')) {
+            if (raw.includes('403') || raw.includes('blocked') || raw.includes('Forbidden')) {
+                hint = 'Registry blocked the audit request. The profiler retries with the public registry automatically — if this persists, check network/proxy settings.';
+            } else if (raw.includes('ENOTFOUND') || raw.includes('ECONNREFUSED') || raw.includes('ETIMEDOUT')) {
                 hint = 'Could not reach the npm registry. Check your network or proxy settings.';
             } else if (raw.includes('ELOCKFILECONFLICT') || raw.includes('package-lock')) {
                 hint = 'Lock file issue. Try running npm install first.';
@@ -146,7 +155,7 @@ export class HealthService {
                 hint = 'npm not found in PATH.';
             }
 
-            this.logger.warn(`npm audit failed: ${clean}`);
+            this.logger.warn(`npm audit failed: ${clean || raw.slice(0, 200)}`);
             return { data: null, error: hint || clean || 'npm audit failed' };
         }
     }

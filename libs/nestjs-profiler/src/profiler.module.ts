@@ -19,6 +19,7 @@ import { MysqlCollector } from './collectors/mysql-collector';
 import { LogCollector } from './collectors/log-collector';
 import { CacheCollector } from './collectors/cache-collector';
 import { HttpCollector } from './collectors/http-collector';
+import { EventCollector } from './collectors/event-collector';
 import { HealthService } from './services/health.service';
 import { CodeQualityService } from './services/code-quality.service';
 import { ExplainAnalyzer } from './analyzers/explain-analyzer';
@@ -44,6 +45,7 @@ import { ProfilerMiddleware } from './middleware/profiler.middleware';
 })
 export class ProfilerModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    // Timing middleware — applied to all app routes except /__profiler
     consumer
       .apply(ProfilerMiddleware)
       .exclude({ path: '__profiler/(.*)', method: RequestMethod.ALL })
@@ -81,6 +83,7 @@ export class ProfilerModule implements NestModule {
         LogCollector,
         CacheCollector,
         HttpCollector,
+        EventCollector,
         HealthService,
         CodeQualityService,
         ExplainAnalyzer,
@@ -117,6 +120,89 @@ export class ProfilerModule implements NestModule {
         'Profiler: Could not initialize Explorers. Ensure ProfilerModule is imported.',
         e,
       );
+    }
+
+    // ── Event listener name resolution ────────────────────────────────────────
+    // @nestjs/event-emitter v2+ wraps @OnEvent handlers in anonymous arrow
+    // functions, losing the method name.  We recover it by scanning providers
+    // for the EVENT_LISTENER_METADATA reflect key (set by @OnEvent) and
+    // building an event → [Class.method, ...] map that mirrors the registration
+    // order used by EventSubscribersLoader.
+    try {
+      const eventCollector = app.get(EventCollector);
+      const container = app.container;
+      const modulesContainer = container.getModules();
+
+      const EVENT_LISTENER_METADATA = 'EVENT_LISTENER_METADATA';
+      // event name → ordered list of {name: "ClassName.method", file: "/path/to/file.ts"}
+      const listenerMap = new Map<string, Array<{ name: string; file: string }>>();
+
+      /** Find the source file for a class constructor via require.cache */
+      const findFileForClass = (ctor: Function): string => {
+        if (!ctor?.name) return '';
+        try {
+          const cache = (require as any).cache as Record<string, any>;
+          for (const [filename, mod] of Object.entries(cache)) {
+            if (!mod?.exports) continue;
+            const exp = mod.exports;
+            if (exp[ctor.name] === ctor) return filename.replace(/\.js$/, '.ts');
+            if (exp?.default === ctor)   return filename.replace(/\.js$/, '.ts');
+          }
+        } catch { /* ignore */ }
+        return '';
+      };
+
+      const scanInstance = (instance: any) => {
+        if (!instance) return;
+        const proto = Object.getPrototypeOf(instance);
+        if (!proto || proto === Object.prototype) return;
+
+        // Resolve the source file once per class
+        const file = findFileForClass(instance.constructor);
+
+        Object.getOwnPropertyNames(proto).forEach((methodKey) => {
+          if (methodKey === 'constructor') return;
+          try {
+            const method = proto[methodKey];
+            if (typeof method !== 'function') return;
+            const meta = Reflect.getMetadata(EVENT_LISTENER_METADATA, method);
+            if (!meta) return;
+
+            const metas: any[] = Array.isArray(meta) ? meta : [meta];
+            metas.forEach((m: any) => {
+              // event can be a string or an array of strings / patterns
+              const events: string[] = Array.isArray(m.event)
+                ? m.event
+                : [m.event];
+              const name = `${instance.constructor.name}.${methodKey}`;
+              events.forEach((ev: string) => {
+                const existing = listenerMap.get(ev) ?? [];
+                existing.push({ name, file });
+                listenerMap.set(ev, existing);
+              });
+            });
+          } catch {
+            // ignore reflection errors on individual methods
+          }
+        });
+      };
+
+      for (const mod of modulesContainer.values()) {
+        const providers = [...(mod as any).providers.values()];
+        for (const wrapper of providers) {
+          if (!wrapper?.instance || wrapper.isAlias) continue;
+          scanInstance(wrapper.instance);
+        }
+        const controllers = [...((mod as any).controllers?.values() ?? [])];
+        for (const wrapper of controllers) {
+          if (!wrapper?.instance || wrapper.isAlias) continue;
+          scanInstance(wrapper.instance);
+        }
+      }
+
+      eventCollector.setListenerNames(listenerMap);
+    } catch {
+      // EventCollector not available or @nestjs/event-emitter not installed — skip silently
     }
   }
 }

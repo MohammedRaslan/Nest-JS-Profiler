@@ -1,41 +1,409 @@
-<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-    <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-        <div class="flex items-center space-x-4">
-            <h2 class="font-semibold text-gray-700">Routes Explorer</h2>
-            <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+<script>
+window.__routes = {{{ routesJson }}};
+</script>
+
+<div id="routes-root">
+    <!-- Header bar -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-4 border-b border-gray-200 bg-gray-50 flex flex-wrap gap-3 items-center justify-between">
+            <div class="flex items-center gap-4">
+                <h2 class="font-semibold text-gray-700">Routes Explorer</h2>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input id="rt-search"
+                        class="block w-64 pl-9 pr-3 py-1.5 border border-gray-300 rounded-md text-sm bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Search routes…" type="search" autocomplete="off">
                 </div>
-                <input id="search" name="search"
-                    class="block w-64 pl-9 pr-3 py-1.5 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="Search routes..." type="search">
+            </div>
+            <div class="flex items-center gap-2 text-xs text-gray-500">
+                <span id="rt-count" class="bg-white border border-gray-200 px-2 py-1 rounded-md">{{ totalRoutes }} routes</span>
+                <span id="rt-ctrl-count" class="bg-white border border-gray-200 px-2 py-1 rounded-md"></span>
             </div>
         </div>
-        <span class="text-xs text-gray-500 bg-white border border-gray-200 px-2 py-1 rounded-md">
-            {{ totalRoutes }} Routes Found
-        </span>
+
+        <!-- Method filter pills -->
+        <div class="px-4 py-2 border-b border-gray-100 bg-gray-50 flex flex-wrap gap-2" id="rt-method-filters"></div>
+
+        <!-- Accordion list -->
+        <div id="rt-list" class="divide-y divide-gray-100"></div>
+
+        <!-- Empty state -->
+        <div id="rt-empty" class="hidden p-10 text-center text-gray-400 text-sm italic">No routes match your search.</div>
     </div>
-    <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th scope="col"
-                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method
-                    </th>
-                    <th scope="col"
-                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Path</th>
-                    <th scope="col"
-                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Controller</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                {{{ rows }}}
-            </tbody>
-        </table>
-    </div>
-    {{{ emptyState }}}
 </div>
+
+<style>
+    .rt-card-body { display: none; }
+    .rt-card-body.open { display: block; }
+    .rt-chevron { transition: transform 0.18s ease; }
+    .rt-chevron.open { transform: rotate(90deg); }
+    .rt-pill { display: inline-flex; align-items: center; font-size: 0.7rem; font-weight: 600;
+               padding: 0 6px; height: 20px; border-radius: 9999px; text-transform: uppercase; letter-spacing: .03em; }
+    .rt-type-pill { display: inline-block; font-size: 0.68rem; padding: 1px 7px; border-radius: 4px;
+                    font-weight: 500; background: #f3f4f6; color: #374151; font-family: monospace; }
+    .rt-method-btn { font-size: 0.7rem; font-weight: 600; padding: 2px 10px; border-radius: 9999px;
+                     border: 1px solid transparent; cursor: pointer; transition: opacity .15s; }
+    .rt-method-btn.active { opacity: 1; }
+    .rt-method-btn:not(.active) { opacity: 0.45; }
+    .rt-param-row { display: flex; align-items: baseline; gap: 8px; padding: 4px 0;
+                    border-bottom: 1px solid #f3f4f6; }
+    .rt-param-row:last-child { border-bottom: none; }
+    .rt-param-name { font-family: monospace; font-size: 0.8rem; color: #1e293b; font-weight: 600; min-width: 120px; }
+    .rt-param-type { font-family: monospace; font-size: 0.75rem; color: #6366f1; }
+    .rt-section-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+                        letter-spacing: .06em; color: #9ca3af; margin-bottom: 6px; }
+    .rt-required-badge { font-size: 0.6rem; padding: 1px 5px; border-radius: 3px;
+                         background: #fee2e2; color: #dc2626; font-weight: 600; }
+    .rt-optional-badge { font-size: 0.6rem; padding: 1px 5px; border-radius: 3px;
+                         background: #f3f4f6; color: #6b7280; font-weight: 600; }
+    .rt-param-block { border-bottom: 1px solid #f3f4f6; }
+    .rt-param-block:last-child { border-bottom: none; }
+    .rt-param-block .rt-param-row { border-bottom: none; }
+    .rt-props-block { margin: 2px 0 6px 16px; padding: 6px 10px;
+                      background: #f8fafc; border-left: 2px solid #e0e7ff;
+                      border-radius: 0 4px 4px 0; }
+    .rt-props-label { font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+                      letter-spacing: .06em; color: #a5b4fc; margin-bottom: 4px; }
+    .rt-prop-row { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; }
+    .rt-prop-name { font-family: monospace; font-size: 0.75rem; color: #374151; font-weight: 500; min-width: 110px; }
+    .rt-copy-btn { display: inline-flex; align-items: center; justify-content: center;
+                   width: 22px; height: 22px; border-radius: 4px; border: 1px solid #e5e7eb;
+                   background: #fff; color: #9ca3af; cursor: pointer; flex-shrink: 0;
+                   transition: color .15s, border-color .15s; padding: 0; }
+    .rt-copy-btn:hover { color: #6366f1; border-color: #a5b4fc; }
+</style>
+
+<script>
+(function () {
+    const METHOD_COLORS = {
+        GET:     { bg: '#dcfce7', text: '#166534' },
+        POST:    { bg: '#dbeafe', text: '#1e40af' },
+        PUT:     { bg: '#fef3c7', text: '#92400e' },
+        PATCH:   { bg: '#ffedd5', text: '#9a3412' },
+        DELETE:  { bg: '#fee2e2', text: '#991b1b' },
+        OPTIONS: { bg: '#f3e8ff', text: '#6b21a8' },
+        HEAD:    { bg: '#e0f2fe', text: '#0c4a6e' },
+        ALL:     { bg: '#f1f5f9', text: '#475569' },
+    };
+
+    function escHtml(s) {
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function methodBadge(m) {
+        const c = METHOD_COLORS[m] || METHOD_COLORS['ALL'];
+        return `<span class="rt-pill" style="background:${c.bg};color:${c.text}">${escHtml(m)}</span>`;
+    }
+
+    function makeCopyBtn(text) {
+        if (!text) return '';
+        const btn = document.createElement('button');
+        btn.className = 'rt-copy-btn';
+        btn.title = text;
+        btn.innerHTML = `<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>`;
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            navigator.clipboard.writeText(text).then(() => {
+                btn.innerHTML = `<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#22c55e" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>`;
+                setTimeout(() => {
+                    btn.innerHTML = `<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>`;
+                }, 1500);
+            });
+        });
+        return btn;
+    }
+
+    function renderParamRow(p) {
+        const wrap = document.createElement('div');
+        wrap.className = 'rt-param-block';
+
+        // Main row
+        const row = document.createElement('div');
+        row.className = 'rt-param-row';
+
+        const nameEl = document.createElement('span');
+        nameEl.className = 'rt-param-name';
+        nameEl.textContent = p.name;
+        row.appendChild(nameEl);
+
+        // Type + optional copy btn
+        const typeWrap = document.createElement('span');
+        typeWrap.style.display = 'inline-flex';
+        typeWrap.style.alignItems = 'center';
+        typeWrap.style.gap = '4px';
+        const typeEl = document.createElement('span');
+        typeEl.className = 'rt-param-type';
+        typeEl.textContent = p.dataType;
+        typeWrap.appendChild(typeEl);
+        if (p.file) typeWrap.appendChild(makeCopyBtn(p.file));
+        row.appendChild(typeWrap);
+
+        const inBadge = document.createElement('span');
+        inBadge.className = 'rt-type-pill';
+        inBadge.style.background = '#ede9fe';
+        inBadge.style.color = '#5b21b6';
+        inBadge.textContent = p.paramType;
+        row.appendChild(inBadge);
+
+        const reqBadge = document.createElement('span');
+        reqBadge.className = p.required ? 'rt-required-badge' : 'rt-optional-badge';
+        reqBadge.textContent = p.required ? 'required' : 'optional';
+        row.appendChild(reqBadge);
+
+        wrap.appendChild(row);
+
+        // Properties sub-block
+        if (p.properties && p.properties.length > 0) {
+            const block = document.createElement('div');
+            block.className = 'rt-props-block';
+            const lbl = document.createElement('div');
+            lbl.className = 'rt-props-label';
+            lbl.textContent = 'properties';
+            block.appendChild(lbl);
+            p.properties.forEach(prop => {
+                const pr = document.createElement('div');
+                pr.className = 'rt-prop-row';
+                const pn = document.createElement('span');
+                pn.className = 'rt-prop-name';
+                pn.textContent = prop.name;
+                const pt = document.createElement('span');
+                pt.className = 'rt-param-type';
+                pt.textContent = prop.type;
+                pr.appendChild(pn);
+                pr.appendChild(pt);
+                block.appendChild(pr);
+            });
+            wrap.appendChild(block);
+        } else if (p.properties) {
+            const block = document.createElement('div');
+            block.className = 'rt-props-block';
+            const hint = document.createElement('p');
+            hint.className = 'text-xs text-gray-400 italic';
+            hint.textContent = 'No property metadata found. Add class-validator or @ApiProperty() decorators.';
+            block.appendChild(hint);
+            wrap.appendChild(block);
+        }
+
+        return wrap;
+    }
+
+    function renderBody(body) {
+        if (!body) return null;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'mb-4';
+
+        const lbl = document.createElement('div');
+        lbl.className = 'rt-section-label';
+        lbl.textContent = 'Request Body';
+        wrap.appendChild(lbl);
+
+        // Type name row + copy btn
+        const typeRow = document.createElement('div');
+        typeRow.style.display = 'inline-flex';
+        typeRow.style.alignItems = 'center';
+        typeRow.style.gap = '6px';
+        typeRow.style.marginBottom = '8px';
+
+        const nameEl = document.createElement('span');
+        nameEl.className = 'text-sm font-semibold text-gray-800';
+        nameEl.textContent = body.typeName;
+        typeRow.appendChild(nameEl);
+
+        const dtoBadge = document.createElement('span');
+        dtoBadge.className = 'rt-type-pill';
+        dtoBadge.textContent = 'DTO';
+        typeRow.appendChild(dtoBadge);
+
+        if (body.file) typeRow.appendChild(makeCopyBtn(body.file));
+
+        wrap.appendChild(typeRow);
+
+        if (body.properties && body.properties.length > 0) {
+            body.properties.forEach(p => {
+                const pr = document.createElement('div');
+                pr.className = 'rt-param-row';
+                const pn = document.createElement('span');
+                pn.className = 'rt-param-name';
+                pn.textContent = p.name;
+                const pt = document.createElement('span');
+                pt.className = 'rt-param-type';
+                pt.textContent = p.type;
+                pr.appendChild(pn);
+                pr.appendChild(pt);
+                wrap.appendChild(pr);
+            });
+        } else {
+            const hint = document.createElement('p');
+            hint.className = 'text-xs text-gray-400 italic mt-1';
+            hint.textContent = 'No property metadata found. Add class-validator or @ApiProperty() decorators to inspect properties.';
+            wrap.appendChild(hint);
+        }
+
+        return wrap;
+    }
+
+    function buildCard(route) {
+        const pathParams = route.params.filter(p => p.paramType === 'path');
+        const queryParams = route.params.filter(p => p.paramType === 'query');
+        const headerParams = route.params.filter(p => p.paramType === 'header');
+        const hasDetails = pathParams.length || queryParams.length || headerParams.length || route.body;
+
+        const div = document.createElement('div');
+        div.className = 'rt-card';
+        div.dataset.method = route.method;
+        div.dataset.path = route.path.toLowerCase();
+        div.dataset.ctrl = (route.controller + '.' + route.handler).toLowerCase();
+
+        // ── Header row ────────────────────────────────────────────────────────
+        const header = document.createElement('div');
+        header.className = 'rt-card-header flex items-center gap-3 px-4 py-3 select-none' +
+            (hasDetails ? ' cursor-pointer hover:bg-gray-50' : '');
+
+        const badgeWrap = document.createElement('div');
+        badgeWrap.className = 'flex-shrink-0 w-16 text-right';
+        badgeWrap.innerHTML = methodBadge(route.method);
+        header.appendChild(badgeWrap);
+
+        const pathEl = document.createElement('code');
+        pathEl.className = 'flex-1 text-sm text-gray-800 font-mono truncate';
+        pathEl.title = route.path;
+        pathEl.textContent = route.path;
+        header.appendChild(pathEl);
+
+        const ctrlEl = document.createElement('span');
+        ctrlEl.className = 'text-xs text-gray-400 hidden md:block flex-shrink-0';
+        ctrlEl.innerHTML = `${escHtml(route.controller)}.<span class="text-gray-600 font-medium">${escHtml(route.handler)}()</span>`;
+        header.appendChild(ctrlEl);
+
+        const chevSvg = document.createElement('span');
+        chevSvg.innerHTML = hasDetails
+            ? `<svg class="rt-chevron w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>`
+            : `<svg class="w-4 h-4 flex-shrink-0 opacity-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>`;
+        header.appendChild(chevSvg);
+        div.appendChild(header);
+
+        // ── Detail body ───────────────────────────────────────────────────────
+        if (hasDetails) {
+            const body = document.createElement('div');
+            body.className = 'rt-card-body px-5 py-4 bg-gray-50 border-t border-gray-100';
+
+            function addSection(label, paramList) {
+                if (!paramList.length) return;
+                const sec = document.createElement('div');
+                sec.className = 'mb-4';
+                const lbl = document.createElement('div');
+                lbl.className = 'rt-section-label';
+                lbl.textContent = label;
+                sec.appendChild(lbl);
+                paramList.forEach(p => sec.appendChild(renderParamRow(p)));
+                body.appendChild(sec);
+            }
+
+            addSection('Path Parameters', pathParams);
+            addSection('Query Parameters', queryParams);
+            addSection('Header Parameters', headerParams);
+
+            if (route.body) {
+                const bodySection = renderBody(route.body);
+                if (bodySection) body.appendChild(bodySection);
+            }
+
+            div.appendChild(body);
+
+            header.addEventListener('click', () => {
+                const open = body.classList.toggle('open');
+                const chev = div.querySelector('.rt-chevron');
+                if (chev) chev.classList.toggle('open', open);
+            });
+        }
+
+        return div;
+    }
+
+    function render(routes) {
+        const list = document.getElementById('rt-list');
+        list.innerHTML = '';
+        routes.forEach(r => list.appendChild(buildCard(r)));
+        document.getElementById('rt-empty').classList.toggle('hidden', routes.length > 0);
+    }
+
+    function getUniqueControllers(routes) {
+        return new Set(routes.map(r => r.controller)).size;
+    }
+
+    function init() {
+        const allRoutes = window.__routes || [];
+
+        // Stats
+        document.getElementById('rt-ctrl-count').textContent =
+            getUniqueControllers(allRoutes) + ' controllers';
+
+        // Method filter pills
+        const methods = [...new Set(allRoutes.map(r => r.method))].sort();
+        const activeFilters = new Set(methods);
+        const filtersEl = document.getElementById('rt-method-filters');
+
+        methods.forEach(m => {
+            const c = METHOD_COLORS[m] || METHOD_COLORS['ALL'];
+            const btn = document.createElement('button');
+            btn.className = 'rt-method-btn active';
+            btn.style.background = c.bg;
+            btn.style.color = c.text;
+            btn.style.borderColor = c.text + '33';
+            btn.textContent = m;
+            btn.addEventListener('click', () => {
+                if (activeFilters.has(m)) {
+                    activeFilters.delete(m);
+                    btn.classList.remove('active');
+                } else {
+                    activeFilters.add(m);
+                    btn.classList.add('active');
+                }
+                applyFilters();
+            });
+            filtersEl.appendChild(btn);
+        });
+
+        let searchQuery = '';
+        document.getElementById('rt-search').addEventListener('input', e => {
+            searchQuery = e.target.value.trim().toLowerCase();
+            applyFilters();
+        });
+
+        function applyFilters() {
+            const visible = allRoutes.filter(r => {
+                if (!activeFilters.has(r.method)) return false;
+                if (!searchQuery) return true;
+                return r.path.toLowerCase().includes(searchQuery) ||
+                       (r.controller + '.' + r.handler).toLowerCase().includes(searchQuery);
+            });
+            render(visible);
+            document.getElementById('rt-count').textContent = visible.length + ' routes';
+        }
+
+        render(allRoutes);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>

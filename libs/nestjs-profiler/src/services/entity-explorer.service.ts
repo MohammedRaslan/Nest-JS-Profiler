@@ -11,7 +11,7 @@ export interface EntityDefinition {
 
 @Injectable()
 export class EntityExplorerService {
-    private entities: EntityDefinition[] = [];
+    private static _entities: EntityDefinition[] = [];
 
     constructor() { }
 
@@ -30,7 +30,7 @@ export class EntityExplorerService {
      * Get discovered entities
      */
     getEntities(): EntityDefinition[] {
-        return this.entities;
+        return EntityExplorerService._entities;
     }
 
     private scan(modulesContainer: Map<any, any>) {
@@ -64,7 +64,7 @@ export class EntityExplorerService {
             unique.set(key, d);
         });
 
-        this.entities = Array.from(unique.values()).sort((a, b) => a.name.localeCompare(b.name));
+        EntityExplorerService._entities = Array.from(unique.values()).sort((a, b) => a.name.localeCompare(b.name));
     }
 
     // Check if instance looks like TypeORM DataSource
