@@ -204,6 +204,15 @@
                     </svg>
                     Code Quality
                 </a>
+                <a href="/__profiler/view/cron-jobs"
+                    class="flex items-center px-2 py-2 text-sm font-medium rounded-md group {{{ cronJobsActive }}}">
+                    <svg class="mr-3 flex-shrink-0 h-6 w-6 {{{ cronJobsIconClass }}}" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Cron Jobs
+                </a>
                 <a href="/__profiler/view/logs/live"
                     class="flex items-center px-2 py-2 text-sm font-medium rounded-md group {{{ liveLogsActive }}}">
                     <svg class="mr-3 flex-shrink-0 h-6 w-6 {{{ liveLogsIconClass }}}" fill="none" viewBox="0 0 24 24"
@@ -218,7 +227,7 @@
             <div class="flex-shrink-0 flex bg-slate-800 p-4 items-center justify-between">
                 <div class="flex items-center">
                     <div class="ml-1">
-                        <p class="text-xs font-medium text-white">v1.0.0</p>
+                        <p class="text-xs font-medium text-white">v1.0.27</p>
                         <p class="text-xs font-medium text-slate-300">nestjs-profiler</p>
                     </div>
                 </div>

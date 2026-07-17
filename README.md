@@ -4,31 +4,112 @@
   <img src="https://raw.githubusercontent.com/MohammedRaslan/Nest-JS-Profiler/refs/heads/main/libs/nestjs-profiler/src/assets/logo.png" width="400" alt="NestJS Profiler Logo" />
 </p>
 
-A NestJS module for profiling HTTP requests, database queries, cache operations, outbound HTTP calls, application logs, package health, code quality, and event tracking. Inspired by Symfony Profiler, it provides a web-based dashboard to inspect everything that happens inside a request — from DB queries to downstream API calls — in real time.
+<p align="center">
+  <a href="https://www.npmjs.com/package/nestjs-profiler"><img src="https://img.shields.io/npm/v/nestjs-profiler.svg" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/nestjs-profiler"><img src="https://img.shields.io/npm/dm/nestjs-profiler.svg" alt="npm downloads" /></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D16-brightgreen" alt="node version" />
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="license" />
+</p>
+
+> A drop-in debugging dashboard for NestJS. Inspect HTTP requests, database queries, outbound calls, logs, events, scheduled jobs, and code health — all from one browser tab, with zero instrumentation required.
+
+---
+
+> ⚠️ **Development use only.** The profiler adds request overhead and exposes internal application data. Always set `enabled: process.env.NODE_ENV !== 'production'`.
+
+---
+
+## Quick Start
+
+**1. Install**
+
+```bash
+npm install nestjs-profiler
+```
+
+**2. Register in your AppModule**
+
+```typescript
+import { ProfilerModule } from 'nestjs-profiler';
+
+@Module({
+  imports: [
+    ProfilerModule.forRoot({
+      enabled: process.env.NODE_ENV !== 'production',
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+**3. Initialize in main.ts**
+
+```typescript
+import { ProfilerModule } from 'nestjs-profiler';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  ProfilerModule.initialize(app); // enables Route Explorer, Entity Explorer, Scheduled Jobs
+  await app.listen(3000);
+}
+```
+
+---
+
+### Global Prefix (Required if you use global route prefix)
+
+If your app uses a global route prefix, exclude the profiler:
+
+```typescript
+app.setGlobalPrefix('api', {
+  exclude: [{ path: '__profiler/(.*)', method: RequestMethod.ALL }],
+});
+```
+
+Open `http://localhost:3000/__profiler` — the dashboard is live.
+
+---
 
 ## Features
 
-- **HTTP Request Tracing** — Tracks method, URL, controller handler, duration, status code, headers, and request body.
-- **Database Profiling**
-  - **PostgreSQL** — Captures all queries via `pg` (compatible with TypeORM, MikroORM, raw pg). Supports **Auto-Explain** to run `EXPLAIN` or `EXPLAIN ANALYZE` on slow queries automatically.
-  - **MongoDB** — Profiles MongoDB commands and queries.
-  - **MySQL** — Profiles MySQL queries.
-  - **N+1 Detection** — Automatically flags repeated identical queries within the same request.
-  - **Slow Query Tagging** — Tags queries exceeding 100ms.
-  - **Sequential Scan Detection** — Tags queries using a Seq Scan from the explain plan.
-- **Outbound HTTP Tracking** — Captures every outbound `http`/`https` call made during a request: URL, method, status code, duration, and headers. Works automatically with axios, node-fetch, and any library built on Node's `http`/`https` modules. Enabled by default — no configuration required.
-- **Cache Profiling** — Tracks cache operations (get, set, del, reset) and hit/miss ratio when using `@nestjs/cache-manager`.
-- **Log Profiling** — Captures application logs associated with each request context.
-- **Live Logs Terminal** — Real-time streaming log viewer at `/__profiler/view/logs/live` via Server-Sent Events. Supports level filtering, search, pause/resume, and auto-scroll.
-- **Summary Dashboard** — Aggregate statistics: avg/p95 duration, error rate, cache hit rate, top slow endpoints, top slow queries, and recent errors.
-- **Entity Explorer** — Lists all registered TypeORM/MikroORM entities and their columns.
-- **Route Explorer** — Lists all registered routes with their controllers, handlers, HTTP methods, and full path. Each route expands to show path parameters, query parameters, request headers, and body DTOs — including the DTO class name, all decorated properties, and their TypeScript types. Source file paths are shown with a one-click copy button.
-- **Dashboard Authentication** — Optional login wall protecting all `/__profiler` routes. When enabled, an HMAC-signed token is stored in the browser's `localStorage` with a 24-hour TTL. Credentials are defined in `ProfilerModule.forRoot()` — no separate auth server required.
-- **Package Health** — Runs `npm audit` and `npm outdated` to surface known vulnerabilities and stale dependencies. Results are cached for 5 minutes. Works with npm, yarn, and pnpm. If the registry is unreachable, outdated packages are still shown with an inline warning.
-- **Code Quality** — Runs ESLint and TypeScript compiler checks (`tsc --noEmit`) against your source code. Issues are displayed grouped by file or by rule, with direct links to ESLint rule docs and TypeScript error references. Auto-fixable issues are flagged. File paths are copyable with one click.
-- **Event Tracking** — Automatically intercepts every `EventEmitter2` emission and builds a cascading tree showing which service fired each event, which listeners handled it (with individual timings), and any child events emitted from inside a listener. No instrumentation required — works automatically when `@nestjs/event-emitter` is installed.
-- **Web UI** — Built-in dashboard at `/__profiler` with no external dependencies.
-- **Zero Hard Dependencies** — Core functionality works out of the box; database drivers are optional peer dependencies.
+### Request Profiling
+- Traces every HTTP request: method, URL, handler, status code, duration, headers, and body
+- Summary dashboard with avg/p95 duration, error rate, cache hit rate, top slow endpoints, and recent errors
+- Full detail view per request including all associated queries, cache ops, logs, and outbound calls
+
+### Database
+- **PostgreSQL** — captures all queries via `pg`, compatible with TypeORM, MikroORM, and raw pg
+- **MongoDB** — profiles all MongoDB commands
+- **MySQL** — profiles MySQL queries via `mysql2`
+- **N+1 Detection** — flags repeated identical queries within the same request
+- **Slow Query Tagging** — highlights queries over 100ms
+- **Sequential Scan Detection** — flags full table scans from the query explain plan
+- **Auto-Explain** — automatically runs `EXPLAIN` or `EXPLAIN ANALYZE` on slow queries (opt-in)
+
+### Outbound HTTP
+Automatically captures every `http`/`https` call your app makes — including axios, node-fetch, and any library built on Node's core modules. Records method, URL, status code, duration, headers (with Authorization and Cookie values redacted), and errors. No configuration required.
+
+### Cache
+Tracks `get`, `set`, `del`, and `reset` operations with hit/miss ratio when using `@nestjs/cache-manager`.
+
+### Logs
+- Captures application logs per request context
+- **Live Logs Terminal** — real-time streaming viewer via Server-Sent Events, with level filtering, search, pause/resume, and auto-scroll
+
+### Code Analysis
+- **Package Health** — runs `npm audit` and `npm outdated` to surface vulnerabilities and stale dependencies, sorted by severity
+- **Code Quality** — runs ESLint and `tsc --noEmit` against your source. Issues shown by file or by rule, with links to rule docs and TypeScript error references. Auto-fixable issues are flagged
+
+### Application Intelligence
+- **Route Explorer** — every registered route grouped by controller, with path/query/header params, body DTOs, property types, and source file paths
+- **Entity Explorer** — all registered TypeORM/MikroORM entities with their columns
+- **Event Tracking** — intercepts every `EventEmitter2` emission and renders a cascading tree: which service fired it, which listeners handled it, individual timings, child events, and errors. Requires `@nestjs/event-emitter`
+- **Scheduled Jobs** — live view of all `@Cron`, `@Interval`, and `@Timeout` jobs from `@nestjs/schedule`, with countdowns, last run times, cycle progress, and handler details. Requires `@nestjs/schedule`
+
+### Security
+- **Dashboard Authentication** — optional login wall with HMAC-SHA256 tokens stored in `localStorage`, 24-hour TTL. No separate auth server needed
+
+---
 
 ## Installation
 
@@ -36,80 +117,61 @@ A NestJS module for profiling HTTP requests, database queries, cache operations,
 npm install nestjs-profiler
 ```
 
-### Peer Dependencies (Optional)
+### Optional Peer Dependencies
 
-Install only the dependencies relevant to your project:
+Install only what your project uses:
 
 ```bash
-# For PostgreSQL
-npm install pg
-
-# For MongoDB
-npm install mongodb
-
-# For MySQL
-npm install mysql2
-
-# For Cache Profiling
-npm install @nestjs/cache-manager cache-manager
+npm install pg                              # PostgreSQL
+npm install mongodb                         # MongoDB
+npm install mysql2                          # MySQL
+npm install @nestjs/cache-manager cache-manager   # Cache profiling
+npm install @nestjs/event-emitter           # Event tracking
+npm install @nestjs/schedule                # Scheduled jobs
 ```
+
+---
 
 ## Configuration
 
-Import `ProfilerModule` in your root `AppModule`:
+All options are passed to `ProfilerModule.forRoot()`. Only `enabled` is required — everything else is opt-in.
 
 ```typescript
-import { Module } from '@nestjs/common';
 import { ProfilerModule } from 'nestjs-profiler';
 import * as pg from 'pg';
 
 @Module({
   imports: [
     ProfilerModule.forRoot({
-      // Global enable/disable (default: true)
-      // Recommended: disable in production
       enabled: process.env.NODE_ENV !== 'production',
 
-      // ── Database ─────────────────────────────────────────────────
-      // PostgreSQL — pass the pg driver instance
+      // PostgreSQL
       pgDriver: pg,
       collectQueries: true,
-
-      // Auto-Explain for slow queries
       explain: {
         enabled: true,
-        thresholdMs: 50,   // Only explain queries taking > 50ms
-        analyze: false,    // true = EXPLAIN ANALYZE (actually executes!)
+        thresholdMs: 100,  // explain queries slower than this
+        analyze: false,    // true = EXPLAIN ANALYZE (executes the query!)
       },
 
-      // MongoDB — pass the mongodb driver instance
+      // MongoDB
       mongoDriver: require('mongodb'),
       collectMongo: true,
 
-      // MySQL — pass the mysql2 driver instance
+      // MySQL
       mysqlDriver: require('mysql2'),
       collectMysql: true,
 
-      // ── Outbound HTTP ─────────────────────────────────────────────
-      // Tracks all outbound http/https calls made during each request.
-      // Enabled by default — set false to disable.
+      // Outbound HTTP (on by default)
       collectHttp: true,
 
-      // ── Cache ─────────────────────────────────────────────────────
-      collectCache: true,   // requires @nestjs/cache-manager
+      // Cache
+      collectCache: true,
 
-      // ── Logs ──────────────────────────────────────────────────────
+      // Logs
       collectLogs: true,
 
-      // ── Storage ───────────────────────────────────────────────────
-      // Default: in-memory (last 100 requests).
-      // Pass a custom object implementing ProfilerStorage for persistence.
-      storage: 'memory',
-
-      // ── Dashboard Auth ────────────────────────────────────────────
-      // Disabled by default. When enabled, all /__profiler routes
-      // require login. username + password are both required when
-      // enabled — a TypeScript type error is raised if either is missing.
+      // Auth (off by default)
       auth: {
         enabled: true,
         username: 'admin',
@@ -121,68 +183,65 @@ import * as pg from 'pg';
 export class AppModule {}
 ```
 
-### Default behaviour
+### Options Reference
 
-| Option | Default | Notes |
+| Option | Default | Description |
 |---|---|---|
-| `enabled` | `true` | Set `false` or tie to `NODE_ENV` |
-| `collectHttp` | `true` | Patches `http`/`https` automatically |
-| `collectLogs` | `true` | |
-| `collectQueries` | `true` | Requires `pgDriver` / `mongoDriver` / `mysqlDriver` |
-| `collectCache` | `true` | Requires `@nestjs/cache-manager` |
-| `explain.enabled` | `false` | Opt-in only |
-| Event Tracking | automatic | Active when `@nestjs/event-emitter` is detected |
-| `auth.enabled` | `false` | When `true`, `username` and `password` are required |
+| `enabled` | `true` | Master switch. Tie to `NODE_ENV` in production |
+| `collectHttp` | `true` | Outbound HTTP tracking (patches `http`/`https`) |
+| `collectLogs` | `true` | Log capture per request |
+| `collectQueries` | `true` | DB query capture. Requires a driver to be passed |
+| `collectCache` | `true` | Cache op tracking. Requires `@nestjs/cache-manager` |
+| `explain.enabled` | `false` | Auto-Explain for slow queries |
+| `explain.thresholdMs` | `100` | Minimum query duration to trigger explain |
+| `explain.analyze` | `false` | Run `EXPLAIN ANALYZE` instead of `EXPLAIN` |
+| `auth.enabled` | `false` | Enable login wall. `username` and `password` required when `true` |
+| Event Tracking | automatic | Activates when `@nestjs/event-emitter` is detected |
+| Scheduled Jobs | automatic | Activates when `@nestjs/schedule` is detected |
 
-## Usage
+---
 
-### 1. Initialize Explorers (Optional but Recommended)
+## Dashboard
 
-To enable the **Entity Explorer** and **Route Explorer**, call `initialize` in `main.ts` after creating the app:
+Navigate to `/__profiler` after starting your app.
 
-```typescript
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { ProfilerModule } from 'nestjs-profiler';
-
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-
-  ProfilerModule.initialize(app);
-
-  await app.listen(3000);
-}
-bootstrap();
-```
-
-### 2. Accessing the Dashboard
-
-Once configured, start your application. The profiler automatically intercepts all requests.
-
-Navigate to `http://localhost:3000/__profiler`.
-
-#### Dashboard Pages
-
-| Path | Description |
+| Page | Description |
 |---|---|
-| `/__profiler` | Redirects to Summary (default landing page) |
 | `/__profiler/view/summary` | Aggregate stats: avg/p95 duration, error rate, top slow endpoints |
-| `/__profiler/view/requests` | All captured requests |
-| `/__profiler/view/queries` | All database queries across requests, sorted by duration |
-| `/__profiler/view/http-calls` | All outbound HTTP calls across requests, sorted by duration |
+| `/__profiler/view/requests` | All captured requests with status, duration, and method |
+| `/__profiler/view/queries` | All DB queries across requests, sortable by duration |
+| `/__profiler/view/http-calls` | All outbound HTTP calls, sortable by duration |
 | `/__profiler/view/logs` | Paginated application logs |
-| `/__profiler/view/logs/live` | Live streaming terminal — real-time log output |
+| `/__profiler/view/logs/live` | Real-time streaming log terminal |
 | `/__profiler/view/cache` | Cache operations with hit/miss breakdown |
-| `/__profiler/view/entities` | Registered database entities |
-| `/__profiler/view/routes` | All registered application routes |
+| `/__profiler/view/entities` | Registered database entities and their columns |
+| `/__profiler/view/routes` | All registered routes with DTOs and parameter types |
 | `/__profiler/view/health` | Package vulnerabilities and outdated dependency report |
-| `/__profiler/view/code-quality` | ESLint and TypeScript static analysis report |
-| `/__profiler/view/events` | Event tracking — cascading tree of all `EventEmitter2` emissions |
+| `/__profiler/view/code-quality` | ESLint and TypeScript static analysis |
+| `/__profiler/view/events` | Event cascade tree for `EventEmitter2` emissions |
+| `/__profiler/view/cron-jobs` | Live scheduled job monitor — cron, intervals, and timeouts |
 | `/__profiler/:id` | Full detail view for a single request |
 
-### 3. Dashboard Authentication
+### JSON API
 
-By default the profiler dashboard is open to anyone who can reach the server. For shared or remote environments you can enable a login wall:
+All data is also available as JSON for programmatic use:
+
+```
+GET /__profiler/json                  # all captured requests
+GET /__profiler/:id/json              # single request detail
+GET /__profiler/api/health            # package health (5 min cache)
+GET /__profiler/api/health?force=true
+GET /__profiler/api/code-quality      # static analysis (5 min cache)
+GET /__profiler/api/code-quality?force=true
+GET /__profiler/api/events            # event log (live, not cached)
+GET /__profiler/api/cron-jobs         # scheduled job state (live, not cached)
+```
+
+---
+
+## Feature Guides
+
+### Dashboard Authentication
 
 ```typescript
 ProfilerModule.forRoot({
@@ -194,177 +253,111 @@ ProfilerModule.forRoot({
 })
 ```
 
-TypeScript enforces that `username` and `password` are both present when `enabled: true` — setting `enabled: true` without credentials is a compile-time error.
+When enabled, all `/__profiler` pages check for a valid token in `localStorage` before rendering. If none is found, the browser redirects to the login page. Tokens use HMAC-SHA256 keyed on the password and expire after 24 hours — changing the password invalidates all active sessions automatically.
 
-**How it works:**
+TypeScript enforces that `username` and `password` are present when `enabled: true`. Omitting either is a compile-time error.
 
-When auth is enabled, every `/__profiler` page runs a blocking script before rendering. If no valid token is found in `localStorage`, the browser is immediately redirected to `/__profiler/login`. After a successful login the token is stored in `localStorage.__profiler_auth` and is valid for 24 hours, after which the user is redirected to the login page again.
+> Auth is enforced client-side. It prevents casual access on shared dev/staging environments but is not a security boundary for sensitive data.
 
-Token generation uses HMAC-SHA256 keyed on the password, so tokens are invalidated automatically if the password changes.
-
-| Route | Description |
+| Route | Purpose |
 |---|---|
 | `GET /__profiler/login` | Login page |
-| `POST /__profiler/api/login` | JSON login endpoint — returns `{ token, expiresAt }` |
-| `GET /__profiler/logout` | Clears the token and redirects to the login page |
+| `POST /__profiler/api/login` | Validates credentials, returns a session token |
+| `GET /__profiler/logout` | Clears the token and redirects to login |
 
-> **Note:** Auth is enforced client-side via `localStorage`. It is intended to prevent casual access in shared dev/staging environments, not as a security boundary for sensitive data. Do not expose the profiler on a public network regardless of this setting.
+---
 
-### 4. Outbound HTTP Tracking
+### Event Tracking
 
-Outbound HTTP tracking is **enabled by default**. Any `http.request`, `https.request`, `http.get`, or `https.get` call made during a request is automatically captured — including calls made via axios, node-fetch, and similar libraries.
-
-Each captured call records:
-
-- Method and full URL
-- HTTP vs HTTPS protocol
-- Response status code
-- Duration in ms
-- Request and response headers (Authorization/Cookie values are automatically redacted)
-- Error message if the call failed
-
-You can view outbound calls for a specific request in the request detail view, or browse all calls across all requests at `/__profiler/view/http-calls`.
-
-To disable:
+Requires `@nestjs/event-emitter`:
 
 ```typescript
-ProfilerModule.forRoot({ collectHttp: false })
+import { EventEmitterModule } from '@nestjs/event-emitter';
+
+@Module({
+  imports: [EventEmitterModule.forRoot()],
+})
+export class AppModule {}
 ```
 
-### 5. Package Health
+The profiler intercepts every `emit` and `emitAsync` call automatically. No decorators or instrumentation needed. The dashboard renders a full cascade tree showing the emitter, all listeners with timings, child events, and any listener errors.
 
-The Health tab runs `npm audit` and `npm outdated` from your project root and displays the results in a searchable UI.
-
-- **Vulnerabilities** — sorted by severity (critical → high → moderate → low), with fix availability and whether the package is a direct or transitive dependency.
-- **Outdated packages** — shows current, wanted, and latest versions with major-update warnings.
-- Results are **cached for 5 minutes** server-side. Navigating back to the tab shows the cached result instantly without re-running. Click **Re-run audit** to force a fresh scan.
-- If `npm audit` cannot reach the registry (e.g. VPN or proxy), the outdated packages section still renders with an inline warning for the unavailable audit.
-- No configuration required — works automatically for npm, yarn, and pnpm projects.
-
-#### JSON endpoint
-
-```
-GET /__profiler/api/health           # cached result (5 min TTL)
-GET /__profiler/api/health?force=true  # force fresh scan
-```
-
-### 6. Code Quality
-
-The Code Quality tab runs static analysis tools against your source code and surfaces every issue without AI or external services.
-
-**ESLint** — uses your project's existing ESLint configuration (`node_modules/.bin/eslint`). Results are shown in two views:
-
-- **By File** — expandable accordion rows per file. Each issue shows line:column, severity badge, message, fix indicator (⚡ auto-fixable), and a clickable rule badge linking to the ESLint documentation.
-- **By Rule** — sorted by severity then count, showing how many files are affected per rule.
-
-**TypeScript** — runs `tsc --noEmit` using your project's `tsconfig.json`. Each error links to `typescript.tv/errors` for explanations.
-
-**Summary cards** show total issues, errors, warnings, auto-fixable count, and files affected at a glance.
-
-File paths have a **copy-to-clipboard** button that appears on hover, making it easy to jump to the file in your editor.
-
-Results are cached for 5 minutes. Click **Re-run** to force a fresh analysis.
-
-> **Note:** Code Quality only lints the `src/` directory (or project root if `src/` doesn't exist) and automatically ignores `dist/`, `build/`, `coverage/`, and other generated directories.
-
-#### JSON endpoint
-
-```
-GET /__profiler/api/code-quality             # cached result (5 min TTL)
-GET /__profiler/api/code-quality?force=true  # force fresh scan
-```
-
-### 7. Event Tracking
-
-The Event Tracking tab captures every `EventEmitter2` emission across your application and renders it as a cascading tree — no instrumentation required.
-
-**What it captures:**
-
-- The event name and a JSON preview of the payload
-- Which service or function fired the event (resolved from the call stack)
-- Each listener that handled the event, with individual execution times and pass/fail status
-- Child events emitted from inside a listener, forming a full cascade tree
-- The depth of each event in the chain (root = 0, emitted by a listener = 1, etc.)
-- Whether the event was fired synchronously (`emit`) or asynchronously (`emitAsync`)
-- Any errors thrown by a listener
-
-**Example chain visualised:**
+**Example — what you see in the dashboard:**
 
 ```
 🔔 order.created  (async)  ⬆ OrderService.createOrder  145ms
   ✓ onOrderCreated [InventoryListener]   45ms
   ✓ onOrderCreated [InvoiceListener]     80ms
   ✓ onOrderCreated [AuditListener]        5ms
-    └── 🔔 inventory.reserved  (async)  ⬆ InventoryListener.onOrderCreated  23ms
+    └── 🔔 inventory.reserved  ⬆ InventoryListener  23ms
           ✓ onInventoryReserved [NotificationListener]  20ms
-          ✓ onInventoryReserved [AuditListener]          3ms
-    └── 🔔 invoice.created  (async)  ⬆ InvoiceListener.onOrderCreated  4ms
+    └── 🔔 invoice.created  ⬆ InvoiceListener  4ms
           ✓ onInvoiceCreated [AuditListener]   3ms
 ```
 
-**Requirements:** `@nestjs/event-emitter` must be installed and `EventEmitterModule.forRoot()` must be imported in your `AppModule`. The profiler detects it automatically — no configuration needed.
+---
 
-The page has an **Auto-refresh** toggle that polls every 3 seconds, making it easy to watch events flow in real time as you hit your endpoints.
+### Scheduled Jobs
 
-Results are not cached — each refresh fetches the latest events from the in-memory ring buffer (last 500 events).
+Requires `@nestjs/schedule`:
 
-#### JSON endpoint
-
+```bash
+npm install @nestjs/schedule
 ```
-GET /__profiler/api/events   # all captured events (flat array, newest first)
-```
-
-### 8. Route Explorer
-
-The Route Explorer (`/__profiler/view/routes`) lists every registered route in your application. Routes are grouped by controller and displayed in an expandable accordion. Call `ProfilerModule.initialize(app)` in `main.ts` to populate it (see section 1).
-
-**Per-route information:**
-
-Each route row shows the HTTP method badge and the full path (including any global prefix). Expanding a row reveals:
-
-- **Path parameters** — parameters from the URL pattern (`:id`, `:userId`, etc.), detected either from `@Param('name')` decorators or by scanning the path template directly.
-- **Query parameters** — parameters decorated with `@Query()`, with their TypeScript type.
-- **Headers** — parameters decorated with `@Headers()`, with their TypeScript type.
-- **Request body** — the DTO class name from `@Body()`, with an expanded table of all decorated properties and their types. Properties are discovered via `reflect-metadata` — any class using `class-validator`, `@ApiProperty`, or any other property decorator will have its fields listed automatically.
-- **Source file** — the `.ts` file path of the DTO class, with a one-click copy button, making it easy to jump to the type definition from the profiler.
-
-**Example — what gets surfaced:**
-
-```
-POST /api/v1/orders/:storeId
-  Path params   storeId       string
-  Query params  includeVat    boolean
-  Body (DTO)    CreateOrderDto
-                  items       array
-                  couponCode  string
-                  metadata    object
-                src/orders/dto/create-order.dto.ts  [copy]
-```
-
-The explorer performs a best-effort scan using `reflect-metadata`. It works with TypeScript's `emitDecoratorMetadata: true` (standard for NestJS projects) and does not require OpenAPI/Swagger to be installed.
-
-### 9. JSON API
-
-Retrieve profile data programmatically:
-
-- `GET /__profiler/json` — List all captured requests
-- `GET /__profiler/:id/json` — Details for a specific request
-
-## Global Prefix
-
-If your app uses a global prefix (e.g. `/api`), exclude the profiler routes:
 
 ```typescript
-app.setGlobalPrefix('api', {
-  exclude: [{ path: '__profiler/(.*)', method: RequestMethod.ALL }],
-});
+import { ScheduleModule } from '@nestjs/schedule';
+
+@Module({
+  imports: [ScheduleModule.forRoot()],
+})
+export class AppModule {}
 ```
 
-## Important Notes
+The profiler detects `SchedulerRegistry` at startup via `ProfilerModule.initialize(app)` — no additional configuration needed. The dashboard has three tabs:
 
-- The profiler is designed for **development and debugging only**. Do not enable in production — it adds request overhead and exposes internal application data.
-- The default in-memory storage holds the last 100 requests. Older profiles are evicted automatically.
-- Outbound HTTP tracking patches `http`/`https` at the Node.js module level. The patch is applied once on module init and is safe for hot-reload (double-patch is guarded).
+**Cron Jobs** — one card per `@Cron()` method showing the expression with a plain-English translation (e.g. `0 */5 * * * *` → *Every 5 minutes*), a live next-run countdown, last run time, cycle progress bar, handler name, and source file path. An *Upcoming — next 3 hours* strip at the top plots all jobs on a shared timeline.
+
+**Intervals** — one card per `@Interval()` method with an animated frequency ring, the repeat period displayed prominently (e.g. *Every 30s*), and fires-per-minute count.
+
+**Timeouts** — one card per `@Timeout()` method. Pending jobs show a live countdown in amber; fired jobs turn grey with a *Fired* badge. Both show the configured delay and the handler that will run.
+
+All tabs auto-refresh every 15 seconds. If `@nestjs/schedule` is not installed, the page shows an install prompt instead of an error.
+
+**Example:**
+
+```typescript
+import { Cron, CronExpression, Interval, Timeout } from '@nestjs/schedule';
+
+@Injectable()
+export class TasksService {
+
+  @Cron(CronExpression.EVERY_MINUTE, { name: 'health-ping' })
+  handleHealthPing() { /* ... */ }
+
+  @Cron('0 0 * * *', { name: 'nightly-cleanup' })
+  handleNightlyCleanup() { /* ... */ }
+
+  @Interval('metrics-flush', 30_000)
+  handleMetricsFlush() { /* ... */ }
+
+  @Timeout('deferred-init', 10_000)
+  handleDeferredInit() { /* ... */ }
+}
+```
+
+---
+
+### Route Explorer
+
+Populated by `ProfilerModule.initialize(app)`. Lists every route grouped by controller in an expandable accordion. Each route surfaces:
+
+- HTTP method and full path (including global prefix)
+- Path parameters, query parameters, and headers with their TypeScript types
+- Body DTO — class name, all decorated properties and types (discovered via `reflect-metadata`)
+- Source file path with a one-click copy button
+
+Works with `emitDecoratorMetadata: true` (standard in NestJS). No OpenAPI/Swagger required.
 
 ## License
 

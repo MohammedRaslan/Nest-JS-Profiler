@@ -20,6 +20,7 @@ import { EntityExplorerService } from '../services/entity-explorer.service';
 import { RouteExplorerService } from '../services/route-explorer.service';
 import { HealthService } from '../services/health.service';
 import { CodeQualityService } from '../services/code-quality.service';
+import { CronExplorerService } from '../services/cron-explorer.service';
 import { ProfilerOptions } from '../common/profiler-options.interface';
 import { createHmac } from 'crypto';
 
@@ -33,6 +34,7 @@ export class ProfilerController {
     private readonly routeExplorer: RouteExplorerService,
     private readonly healthService: HealthService,
     private readonly codeQualityService: CodeQualityService,
+    private readonly cronExplorer: CronExplorerService,
     @Optional() @Inject('PROFILER_OPTIONS') private readonly profilerOptions: ProfilerOptions,
   ) {}
 
@@ -326,6 +328,20 @@ export class ProfilerController {
   @Get('api/events')
   async eventsApi() {
     return this.profilerService.getEventsList();
+  }
+
+  @Get('view/cron-jobs')
+  async cronJobsPage(@Res() res: Response) {
+    const report = this.cronExplorer.getReport();
+    const cronDataJson = JSON.stringify(report);
+    const content = this.viewService.render('cron-jobs', { cronDataJson });
+    const html = this.renderLayout('Scheduled Jobs', content, 'cron-jobs');
+    res.header('Content-Type', 'text/html').send(html);
+  }
+
+  @Get('api/cron-jobs')
+  async cronJobsApi() {
+    return this.cronExplorer.getReport();
   }
 
   @Get('view/logs/live')

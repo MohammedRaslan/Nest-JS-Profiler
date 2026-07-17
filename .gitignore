@@ -4,3 +4,5 @@ dist/
 .vscode/
 docs
 GEMINI.md
+# Demo module (local only, not for publishing)
+src/demo/

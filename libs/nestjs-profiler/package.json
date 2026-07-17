@@ -1,6 +1,6 @@
 {
     "name": "nestjs-profiler",
-    "version": "1.0.26",
+    "version": "1.0.27",
     "description": "A NestJS module for profiling HTTP requests, database queries, cache operations, outbound HTTP calls, application logs, package health, code quality, and event tracking. Inspired by Symfony Profiler, it provides a web-based dashboard to inspect everything that happens inside a request — from DB queries to downstream API calls — in real time.",
     "author": "Mohamed Raslan",
     "main": "./index.js",

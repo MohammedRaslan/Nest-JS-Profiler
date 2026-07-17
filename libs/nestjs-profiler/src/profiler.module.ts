@@ -29,6 +29,7 @@ import { RequestProfilerInterceptor } from './interceptors/request-profiler.inte
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ProfilerLogger } from './profiler-logger';
 import { ProfilerMiddleware } from './middleware/profiler.middleware';
+import { CronExplorerService } from './services/cron-explorer.service';
 
 @Global()
 @Module({
@@ -40,8 +41,9 @@ import { ProfilerMiddleware } from './middleware/profiler.middleware';
     TemplateBuilderService,
     EntityExplorerService,
     RouteExplorerService,
+    CronExplorerService,
   ],
-  exports: [ProfilerService, EntityExplorerService, RouteExplorerService],
+  exports: [ProfilerService, EntityExplorerService, RouteExplorerService, CronExplorerService],
 })
 export class ProfilerModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
@@ -86,6 +88,7 @@ export class ProfilerModule implements NestModule {
         EventCollector,
         HealthService,
         CodeQualityService,
+        CronExplorerService,
         ExplainAnalyzer,
         {
           provide: APP_INTERCEPTOR,
@@ -121,6 +124,33 @@ export class ProfilerModule implements NestModule {
         e,
       );
     }
+
+    // ── Cron Explorer ─────────────────────────────────────────────────────────
+    // Optional — only active when @nestjs/schedule is installed and
+    // ScheduleModule.forRoot() is imported in the host app.
+    try {
+      const cronExplorer = app.get(CronExplorerService);
+      const container = app.container;
+      const modulesContainer = container.getModules();
+
+      let schedulerRegistry: any = null;
+      try {
+        // Avoid require('@nestjs/schedule') — it may not resolve from the profiler's
+        // real path when the lib is symlinked. Instead, scan the DI container for a
+        // provider whose constructor is named 'SchedulerRegistry'.
+        for (const mod of modulesContainer.values()) {
+          for (const wrapper of (mod as any).providers?.values() ?? []) {
+            if (wrapper?.instance?.constructor?.name === 'SchedulerRegistry') {
+              schedulerRegistry = wrapper.instance;
+              break;
+            }
+          }
+          if (schedulerRegistry) break;
+        }
+      } catch { /* @nestjs/schedule not installed or ScheduleModule not imported */ }
+
+      cronExplorer.initialize(schedulerRegistry, modulesContainer);
+    } catch { /* CronExplorerService not resolvable — skip */ }
 
     // ── Event listener name resolution ────────────────────────────────────────
     // @nestjs/event-emitter v2+ wraps @OnEvent handlers in anonymous arrow
