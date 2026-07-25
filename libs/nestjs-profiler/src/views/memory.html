@@ -1,0 +1,380 @@
+<script>const MEMORY_DATA = {{{ reportJson }}};</script>
+
+<style>
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulse-red {
+    0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.5); }
+    50%      { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+  }
+  @keyframes pulse-amber {
+    0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,.4); }
+    50%      { box-shadow: 0 0 0 6px rgba(245,158,11,0); }
+  }
+  .fade-in      { animation: fade-in .3s ease; }
+  .pulse-red    { animation: pulse-red 1.8s ease-in-out infinite; }
+  .pulse-amber  { animation: pulse-amber 1.8s ease-in-out infinite; }
+  .chart-svg    { width: 100%; height: 160px; }
+  .stat-card    { transition: transform .15s, box-shadow .15s; }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+  .score-ring   { transform: rotate(-90deg); transform-origin: 50% 50%; }
+</style>
+
+<main class="flex-1 p-6 fade-in" id="memoryRoot">
+
+  <!-- Header row -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Memory Monitor</h1>
+      <p class="text-sm text-gray-500 mt-0.5">V8 heap statistics · rolling 10-minute window · auto-refreshes every 15 s</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <button id="btnGc"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+        title="Force garbage collection (requires --expose-gc)">
+        <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+        Force GC
+      </button>
+      <button id="btnSnapshot"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-300 bg-indigo-50 text-sm font-medium text-indigo-700 hover:bg-indigo-100 transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+        </svg>
+        Heap Snapshot
+      </button>
+      <span id="refreshBadge" class="text-xs text-gray-400 tabular-nums"></span>
+    </div>
+  </div>
+
+  <!-- Alerts -->
+  <div id="alertsSection"></div>
+
+  <!-- Stat cards row -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <!-- Heap Used -->
+    <div class="stat-card bg-white rounded-xl border border-gray-200 p-4">
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Heap Used</p>
+      <p id="statHeapUsed" class="text-2xl font-bold text-gray-900">—</p>
+      <p id="statHeapUsedPct" class="text-xs text-gray-400 mt-0.5">— of heap total</p>
+    </div>
+    <!-- Heap Total -->
+    <div class="stat-card bg-white rounded-xl border border-gray-200 p-4">
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Heap Total</p>
+      <p id="statHeapTotal" class="text-2xl font-bold text-gray-900">—</p>
+      <p id="statRss" class="text-xs text-gray-400 mt-0.5">— RSS</p>
+    </div>
+    <!-- Detached Contexts -->
+    <div class="stat-card bg-white rounded-xl border border-gray-200 p-4">
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Detached Contexts</p>
+      <p id="statDetached" class="text-2xl font-bold text-gray-900">—</p>
+      <p class="text-xs text-gray-400 mt-0.5">V8 leak indicator</p>
+    </div>
+    <!-- Heap Limit -->
+    <div class="stat-card bg-white rounded-xl border border-gray-200 p-4">
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Heap Limit</p>
+      <p id="statHeapLimit" class="text-2xl font-bold text-gray-900">—</p>
+      <p id="statLimitPct" class="text-xs text-gray-400 mt-0.5">— used</p>
+    </div>
+  </div>
+
+  <!-- Chart + Leak Score -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+
+    <!-- Heap chart (2/3 width) -->
+    <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-gray-700">Heap Used — last <span id="chartSamples">0</span> samples</h2>
+        <span id="trendBadge" class="text-xs px-2.5 py-1 rounded-full font-medium">—</span>
+      </div>
+      <svg id="heapChart" class="chart-svg" viewBox="0 0 600 160" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="heapGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#6366f1" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#6366f1" stop-opacity="0.02"/>
+          </linearGradient>
+        </defs>
+        <text x="300" y="85" text-anchor="middle" fill="#9ca3af" font-size="13">Collecting samples…</text>
+      </svg>
+    </div>
+
+    <!-- Leak Score (1/3 width) -->
+    <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col items-center justify-center">
+      <h2 class="text-sm font-semibold text-gray-700 mb-3 self-start">Leak Score</h2>
+      <div class="relative w-36 h-36">
+        <svg viewBox="0 0 36 36" class="w-full h-full -rotate-90">
+          <circle cx="18" cy="18" r="15.915" fill="none" stroke="#e5e7eb" stroke-width="3"/>
+          <circle id="scoreArc" cx="18" cy="18" r="15.915" fill="none" stroke="#10b981"
+            stroke-width="3" stroke-linecap="round"
+            stroke-dasharray="0 100" stroke-dashoffset="0"
+            style="transition: stroke-dasharray .6s ease, stroke .4s ease;"/>
+        </svg>
+        <div class="absolute inset-0 flex flex-col items-center justify-center">
+          <span id="scoreNumber" class="text-3xl font-bold text-gray-900">0</span>
+          <span class="text-xs text-gray-400">/ 100</span>
+        </div>
+      </div>
+      <div class="mt-4 w-full space-y-2">
+        <div class="flex justify-between text-xs">
+          <span class="text-gray-500">Growth rate</span>
+          <span id="scoreGrowth" class="font-medium text-gray-700">0 pts</span>
+        </div>
+        <div class="flex justify-between text-xs">
+          <span class="text-gray-500">Detached contexts</span>
+          <span id="scoreDetached" class="font-medium text-gray-700">0 pts</span>
+        </div>
+        <div class="flex justify-between text-xs">
+          <span class="text-gray-500">Sustained growth</span>
+          <span id="scoreSustained" class="font-medium text-gray-700">0 pts</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top memory-heavy requests -->
+  <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-gray-700">Top Memory-Heavy Requests</h2>
+      <span class="text-xs text-gray-400">heap delta per request (last 50)</span>
+    </div>
+    <div id="requestsTable">
+      <p class="text-sm text-gray-400 px-5 py-6 text-center">No requests recorded yet.</p>
+    </div>
+  </div>
+
+  <!-- GC toast -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 hidden max-w-xs bg-gray-900 text-white text-sm rounded-xl px-4 py-3 shadow-2xl"></div>
+
+</main>
+
+<script>
+(function () {
+
+  const MB = 1024 * 1024;
+  const fmt = b => (b / MB).toFixed(2) + ' MB';
+  const fmtDelta = b => (b >= 0 ? '+' : '') + (b / 1024).toFixed(1) + ' KB';
+
+  // ── Toast ────────────────────────────────────────────────────────────────────
+  function toast(msg, color) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.style.background = color || '#111827';
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 4000);
+  }
+
+  // ── Alerts ───────────────────────────────────────────────────────────────────
+  function renderAlerts(alerts) {
+    const sec = document.getElementById('alertsSection');
+    if (!alerts || !alerts.length) { sec.innerHTML = ''; return; }
+    sec.innerHTML = alerts.map(a =>
+      '<div class="flex items-center gap-2 mb-3 bg-red-50 border border-red-200 text-red-800 text-sm px-4 py-2.5 rounded-lg">' +
+      '<svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>' +
+      a + '</div>'
+    ).join('');
+  }
+
+  // ── Trend badge ──────────────────────────────────────────────────────────────
+  function trendBadge(trend) {
+    const el = document.getElementById('trendBadge');
+    if (trend === 'likely_leak') {
+      el.textContent = '⚠ Likely Leak'; el.className = 'text-xs px-2.5 py-1 rounded-full font-medium bg-red-100 text-red-700 pulse-red';
+    } else if (trend === 'growing') {
+      el.textContent = '↑ Growing'; el.className = 'text-xs px-2.5 py-1 rounded-full font-medium bg-amber-100 text-amber-700';
+    } else {
+      el.textContent = '✓ Stable'; el.className = 'text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-700';
+    }
+  }
+
+  // ── Score ring ───────────────────────────────────────────────────────────────
+  function renderScore(score, breakdown) {
+    const arc = document.getElementById('scoreArc');
+    arc.setAttribute('stroke-dasharray', score + ' ' + (100 - score));
+    arc.setAttribute('stroke', score >= 60 ? '#ef4444' : score >= 30 ? '#f59e0b' : '#10b981');
+    document.getElementById('scoreNumber').textContent = score;
+    document.getElementById('scoreNumber').style.color = score >= 60 ? '#ef4444' : score >= 30 ? '#d97706' : '#111827';
+    document.getElementById('scoreGrowth').textContent   = (breakdown.growthRate ?? 0) + ' pts';
+    document.getElementById('scoreDetached').textContent = (breakdown.detachedContexts ?? 0) + ' pts';
+    document.getElementById('scoreSustained').textContent = (breakdown.sustained ?? 0) + ' pts';
+  }
+
+  // ── Stat cards ───────────────────────────────────────────────────────────────
+  function renderStats(report) {
+    const c = report.current;
+    const heapPct = c.heapTotal > 0 ? ((c.heapUsed / c.heapTotal) * 100).toFixed(1) : 0;
+    const limitPct = c.heapSizeLimit > 0 ? ((c.heapUsed / c.heapSizeLimit) * 100).toFixed(1) : 0;
+
+    document.getElementById('statHeapUsed').textContent     = fmt(c.heapUsed);
+    document.getElementById('statHeapUsedPct').textContent  = heapPct + '% of heap total';
+    document.getElementById('statHeapTotal').textContent    = fmt(c.heapTotal);
+    document.getElementById('statRss').textContent          = fmt(c.rss) + ' RSS';
+
+    const detEl = document.getElementById('statDetached');
+    detEl.textContent = c.detachedContexts;
+    detEl.className   = 'text-2xl font-bold ' + (c.detachedContexts > 5 ? 'text-red-600' : c.detachedContexts > 0 ? 'text-amber-600' : 'text-gray-900');
+
+    document.getElementById('statHeapLimit').textContent  = fmt(c.heapSizeLimit);
+    document.getElementById('statLimitPct').textContent   = limitPct + '% used';
+  }
+
+  // ── Heap chart ───────────────────────────────────────────────────────────────
+  function renderChart(samples) {
+    const svg = document.getElementById('heapChart');
+    document.getElementById('chartSamples').textContent = samples.length;
+    if (samples.length < 2) { return; }
+
+    const W = 600, H = 160, PAD = 10;
+    const values = samples.map(s => s.heapUsed);
+    const minV = Math.min(...values);
+    const maxV = Math.max(...values);
+    const range = maxV - minV || 1;
+
+    const x = i => PAD + (i / (samples.length - 1)) * (W - PAD * 2);
+    const y = v => H - PAD - ((v - minV) / range) * (H - PAD * 2 - 20);
+
+    const pts = samples.map((s, i) => x(i) + ',' + y(s.heapUsed)).join(' ');
+    const areaBottom = 'L' + x(samples.length - 1) + ',' + (H - PAD) + ' L' + x(0) + ',' + (H - PAD) + ' Z';
+
+    // Axis labels
+    const labelMin = (minV / MB).toFixed(1) + ' MB';
+    const labelMax = (maxV / MB).toFixed(1) + ' MB';
+
+    svg.innerHTML =
+      '<defs>' +
+        '<linearGradient id="heapGrad" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0%" stop-color="#6366f1" stop-opacity="0.3"/>' +
+          '<stop offset="100%" stop-color="#6366f1" stop-opacity="0.02"/>' +
+        '</linearGradient>' +
+      '</defs>' +
+      // Grid lines
+      [0.25, 0.5, 0.75].map(f => {
+        const gy = PAD + f * (H - PAD * 2 - 20);
+        return '<line x1="' + PAD + '" y1="' + gy + '" x2="' + (W - PAD) + '" y2="' + gy + '" stroke="#f3f4f6" stroke-width="1"/>';
+      }).join('') +
+      // Area fill
+      '<path d="M' + pts.split(' ').map((p, i) => (i === 0 ? '' : 'L') + p).join(' ') + areaBottom + '" fill="url(#heapGrad)"/>' +
+      // Line
+      '<polyline points="' + pts + '" fill="none" stroke="#6366f1" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+      // Current dot
+      '<circle cx="' + x(samples.length - 1) + '" cy="' + y(values[values.length - 1]) + '" r="4" fill="#6366f1" stroke="white" stroke-width="2"/>' +
+      // Y-axis labels
+      '<text x="' + (PAD + 2) + '" y="' + (PAD + 12) + '" font-size="9" fill="#9ca3af">' + labelMax + '</text>' +
+      '<text x="' + (PAD + 2) + '" y="' + (H - PAD - 4) + '" font-size="9" fill="#9ca3af">' + labelMin + '</text>';
+  }
+
+  // ── Requests table ───────────────────────────────────────────────────────────
+  function renderRequests(reqs) {
+    const el = document.getElementById('requestsTable');
+    if (!reqs || !reqs.length) {
+      el.innerHTML = '<p class="text-sm text-gray-400 px-5 py-6 text-center">No requests recorded yet.</p>';
+      return;
+    }
+    const rows = reqs.slice(0, 15).map(r => {
+      const deltaColor = r.heapDeltaBytes > 1 * 1024 * 1024 ? 'text-red-600 font-semibold'
+                       : r.heapDeltaBytes > 100 * 1024       ? 'text-amber-600 font-medium'
+                       : r.heapDeltaBytes < 0                 ? 'text-green-600'
+                       : 'text-gray-700';
+      const methodBg = { GET: 'bg-blue-100 text-blue-700', POST: 'bg-green-100 text-green-700',
+                         PUT: 'bg-yellow-100 text-yellow-700', DELETE: 'bg-red-100 text-red-700',
+                         PATCH: 'bg-purple-100 text-purple-700' }[r.method] || 'bg-gray-100 text-gray-600';
+      return '<tr class="hover:bg-gray-50">' +
+        '<td class="px-5 py-3 whitespace-nowrap"><span class="text-xs px-2 py-0.5 rounded font-mono font-medium ' + methodBg + '">' + r.method + '</span></td>' +
+        '<td class="px-4 py-3 font-mono text-xs text-gray-700 max-w-xs truncate">' + r.url + '</td>' +
+        '<td class="px-4 py-3 text-xs ' + deltaColor + ' tabular-nums">' + fmtDelta(r.heapDeltaBytes) + '</td>' +
+        '<td class="px-4 py-3 text-xs text-gray-500 tabular-nums">' + r.durationMs + ' ms</td>' +
+        '<td class="px-4 py-3 text-xs text-gray-400 tabular-nums">' + new Date(r.timestamp).toLocaleTimeString() + '</td>' +
+        '</tr>';
+    }).join('');
+    el.innerHTML =
+      '<table class="min-w-full divide-y divide-gray-100">' +
+        '<thead class="bg-gray-50"><tr>' +
+          '<th class="px-5 py-3 text-left text-xs font-semibold text-gray-500">Method</th>' +
+          '<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">URL</th>' +
+          '<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">Heap Delta</th>' +
+          '<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">Duration</th>' +
+          '<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">Time</th>' +
+        '</tr></thead>' +
+        '<tbody class="divide-y divide-gray-50">' + rows + '</tbody>' +
+      '</table>';
+  }
+
+  // ── Render from data ─────────────────────────────────────────────────────────
+  function render(data) {
+    renderAlerts(data.alerts);
+    renderStats(data);
+    trendBadge(data.trend);
+    renderScore(data.leakScore, data.leakScoreBreakdown);
+    renderChart(data.samples);
+    renderRequests(data.topMemoryRequests);
+  }
+
+  // ── Initial render ───────────────────────────────────────────────────────────
+  render(MEMORY_DATA);
+
+  // ── Auto-refresh every 15 s ──────────────────────────────────────────────────
+  let countdown = 15;
+  const badge = document.getElementById('refreshBadge');
+  const tick = setInterval(() => {
+    countdown--;
+    badge.textContent = 'refresh in ' + countdown + ' s';
+    if (countdown <= 0) {
+      countdown = 15;
+      fetch('/__profiler/api/memory')
+        .then(r => r.json())
+        .then(data => render(data))
+        .catch(() => {});
+    }
+  }, 1000);
+
+  // ── GC button ────────────────────────────────────────────────────────────────
+  document.getElementById('btnGc').addEventListener('click', () => {
+    fetch('/__profiler/api/memory/gc', { method: 'POST' })
+      .then(r => r.json())
+      .then(d => {
+        toast(d.message, d.success ? '#059669' : '#dc2626');
+        if (d.success) {
+          setTimeout(() => {
+            fetch('/__profiler/api/memory').then(r => r.json()).then(render);
+          }, 500);
+        }
+      })
+      .catch(() => toast('GC request failed', '#dc2626'));
+  });
+
+  // ── Snapshot button — streams file back as browser download ─────────────────
+  document.getElementById('btnSnapshot').addEventListener('click', () => {
+    const btn = document.getElementById('btnSnapshot');
+    btn.disabled = true;
+    btn.textContent = 'Generating…';
+
+    fetch('/__profiler/api/memory/snapshot', { method: 'POST' })
+      .then(res => {
+        if (!res.ok) return res.json().then(d => Promise.reject(d.message || 'Snapshot failed'));
+        const cd = res.headers.get('Content-Disposition') || '';
+        const match = cd.match(/filename="?([^"]+)"?/);
+        const fileName = match ? match[1] : `Heap-${Date.now()}.heapsnapshot`;
+        return res.blob().then(blob => ({ blob, fileName }));
+      })
+      .then(({ blob, fileName }) => {
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href     = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast('Snapshot downloaded — load it in Chrome DevTools → Memory → Load', '#4f46e5');
+      })
+      .catch(msg => toast(typeof msg === 'string' ? msg : 'Snapshot failed', '#dc2626'))
+      .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> Heap Snapshot';
+      });
+  });
+
+})();
+</script>

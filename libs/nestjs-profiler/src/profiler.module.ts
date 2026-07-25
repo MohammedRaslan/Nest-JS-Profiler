@@ -30,6 +30,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ProfilerLogger } from './profiler-logger';
 import { ProfilerMiddleware } from './middleware/profiler.middleware';
 import { CronExplorerService } from './services/cron-explorer.service';
+import { MemoryService } from './services/memory.service';
 
 @Global()
 @Module({
@@ -42,8 +43,9 @@ import { CronExplorerService } from './services/cron-explorer.service';
     EntityExplorerService,
     RouteExplorerService,
     CronExplorerService,
+    MemoryService,
   ],
-  exports: [ProfilerService, EntityExplorerService, RouteExplorerService, CronExplorerService],
+  exports: [ProfilerService, EntityExplorerService, RouteExplorerService, CronExplorerService, MemoryService],
 })
 export class ProfilerModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
@@ -89,13 +91,14 @@ export class ProfilerModule implements NestModule {
         HealthService,
         CodeQualityService,
         CronExplorerService,
+        MemoryService,
         ExplainAnalyzer,
         {
           provide: APP_INTERCEPTOR,
           useClass: RequestProfilerInterceptor,
         },
       ],
-      exports: [ProfilerService],
+      exports: [ProfilerService, MemoryService],
     };
   }
 

@@ -2,12 +2,16 @@ import { CallHandler, ExecutionContext, Injectable, NestInterceptor, Logger } fr
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { ProfilerService } from '../services/profiler.service';
+import { MemoryService } from '../services/memory.service';
 
 @Injectable()
 export class RequestProfilerInterceptor implements NestInterceptor {
     private logger = new Logger(RequestProfilerInterceptor.name);
 
-    constructor(private profiler: ProfilerService) { }
+    constructor(
+        private profiler: ProfilerService,
+        private memoryService: MemoryService,
+    ) { }
 
     intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
         const http = context.switchToHttp();
@@ -30,6 +34,7 @@ export class RequestProfilerInterceptor implements NestInterceptor {
 
         const interceptorStartTime = Date.now();
         const middlewareStartTime = (req as any)._profilerT0 || interceptorStartTime;
+        const heapBefore = this.memoryService.snapshotBefore();
 
         const profile = this.profiler.startRequest();
 
@@ -47,7 +52,7 @@ export class RequestProfilerInterceptor implements NestInterceptor {
                 next: () => {
                     if (profile) {
                         profile.statusCode = res.statusCode;
-                        this.finishProfile(profile, interceptorStartTime, middlewareStartTime);
+                        this.finishProfile(profile, interceptorStartTime, middlewareStartTime, heapBefore);
                     }
                 },
                 error: (err) => {
@@ -67,14 +72,14 @@ export class RequestProfilerInterceptor implements NestInterceptor {
                             error: err.message,
                             database: 'postgres',
                         });
-                        this.finishProfile(profile, interceptorStartTime, middlewareStartTime);
+                        this.finishProfile(profile, interceptorStartTime, middlewareStartTime, heapBefore);
                     }
                 },
             }),
         );
     }
 
-    private finishProfile(profile: any, interceptorStartTime: number, middlewareStartTime: number) {
+    private finishProfile(profile: any, interceptorStartTime: number, middlewareStartTime: number, heapBefore: number) {
         const endTime = Date.now();
         const totalDuration = endTime - middlewareStartTime;
         const middlewareDuration = interceptorStartTime - middlewareStartTime;
@@ -87,6 +92,14 @@ export class RequestProfilerInterceptor implements NestInterceptor {
         };
 
         profile.duration = totalDuration;
+
+        // Track per-request memory delta
+        this.memoryService.recordDelta(
+            profile.method ?? 'UNKNOWN',
+            profile.url ?? '/',
+            heapBefore,
+            totalDuration,
+        );
 
         this.profiler.endRequest(profile);
     }

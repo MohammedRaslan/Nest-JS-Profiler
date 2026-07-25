@@ -71,6 +71,7 @@ export class ViewService {
       codeQualityActive: active('code-quality'),
       eventsActive: active('events'),
       cronJobsActive: active('cron-jobs'),
+      memoryActive: active('memory'),
       summaryIconClass: activeIcon('summary'),
       requestsIconClass: activeIcon('requests'),
       queriesIconClass: activeIcon('queries'),
@@ -84,6 +85,7 @@ export class ViewService {
       liveLogsIconClass: activeIcon('live-logs'),
       codeQualityIconClass: activeIcon('code-quality'),
       cronJobsIconClass: activeIcon('cron-jobs'),
+      memoryIconClass: activeIcon('memory'),
     };
 
     layout = this.interpolate(layout, data);

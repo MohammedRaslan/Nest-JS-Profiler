@@ -21,6 +21,7 @@ import { RouteExplorerService } from '../services/route-explorer.service';
 import { HealthService } from '../services/health.service';
 import { CodeQualityService } from '../services/code-quality.service';
 import { CronExplorerService } from '../services/cron-explorer.service';
+import { MemoryService } from '../services/memory.service';
 import { ProfilerOptions } from '../common/profiler-options.interface';
 import { createHmac } from 'crypto';
 
@@ -35,6 +36,7 @@ export class ProfilerController {
     private readonly healthService: HealthService,
     private readonly codeQualityService: CodeQualityService,
     private readonly cronExplorer: CronExplorerService,
+    private readonly memoryService: MemoryService,
     @Optional() @Inject('PROFILER_OPTIONS') private readonly profilerOptions: ProfilerOptions,
   ) {}
 
@@ -406,6 +408,52 @@ export class ProfilerController {
       this.profilerService.logEmitter.setMaxListeners(
         Math.max(1, this.profilerService.logEmitter.getMaxListeners() - 1),
       );
+    });
+  }
+
+  @Get('view/memory')
+  async memoryPage(@Res() res: Response) {
+    const report = this.memoryService.getReport();
+    const reportJson = JSON.stringify(report);
+    const content = this.viewService.render('memory', { reportJson });
+    const html = this.renderLayout('Memory', content, 'memory');
+    res.header('Content-Type', 'text/html').send(html);
+  }
+
+  @Get('api/memory')
+  async memoryApi() {
+    return this.memoryService.getReport();
+  }
+
+  @Post('api/memory/gc')
+  async memoryGc() {
+    return this.memoryService.forceGc();
+  }
+
+  @Post('api/memory/snapshot')
+  async memorySnapshot(@Res() res: Response) {
+    const result = this.memoryService.takeSnapshot();
+
+    if (!result.success || !result.filePath) {
+      res.status(500).json({ success: false, message: result.message });
+      return;
+    }
+
+    const fs   = require('fs');
+    const path = require('path');
+    const fileName = path.basename(result.filePath);
+
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+    const stream = fs.createReadStream(result.filePath);
+    stream.pipe(res);
+
+    // Delete temp file after the response is fully sent
+    res.on('finish', () => fs.unlink(result.filePath, () => {}));
+    stream.on('error', () => {
+      res.status(500).json({ success: false, message: 'Failed to stream snapshot' });
+      fs.unlink(result.filePath, () => {});
     });
   }
 

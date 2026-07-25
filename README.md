@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="license" />
 </p>
 
-> A drop-in debugging dashboard for NestJS. Inspect HTTP requests, database queries, outbound calls, logs, events, scheduled jobs, and code health — all from one browser tab, with zero instrumentation required.
+> A drop-in debugging dashboard for NestJS. Inspect HTTP requests, database queries, outbound calls, logs, events, scheduled jobs, memory usage, and code health — all from one browser tab, with zero instrumentation required.
 
 ---
 
@@ -105,6 +105,34 @@ Tracks `get`, `set`, `del`, and `reset` operations with hit/miss ratio when usin
 - **Entity Explorer** — all registered TypeORM/MikroORM entities with their columns
 - **Event Tracking** — intercepts every `EventEmitter2` emission and renders a cascading tree: which service fired it, which listeners handled it, individual timings, child events, and errors. Requires `@nestjs/event-emitter`
 - **Scheduled Jobs** — live view of all `@Cron`, `@Interval`, and `@Timeout` jobs from `@nestjs/schedule`, with countdowns, last run times, cycle progress, and handler details. Requires `@nestjs/schedule`
+
+### Memory Monitor
+Continuously samples Node.js heap statistics using `process.memoryUsage()` and `v8.getHeapStatistics()` (zero extra dependencies). Stores a 60-sample rolling window (10 minutes at 10-second intervals) and computes a 0–100 leak score from three signals: heap growth rate across the window, number of V8 detached contexts, and sustained growth ratio. Trend is classified as `stable`, `growing`, or `likely_leak`.
+
+- **Live heap chart** — SVG line chart of `heapUsed` across the rolling window, auto-refreshes every 15 seconds
+- **Stat cards** — heap used, heap total, RSS, detached contexts, and heap size limit
+- **Leak score ring** — 0–100 circular gauge with score breakdown by component
+- **Per-request memory delta** — every intercepted request records `heapUsed` before and after the handler; the top 20 highest-delta requests are shown in a table
+- **Force GC** — manually triggers garbage collection (requires `--expose-gc`, pre-wired in `start:dev`)
+- **Heap Snapshot** — generates a V8 heap snapshot and streams it directly to the browser as a `.heapsnapshot` download; open in Chrome DevTools → Memory tab → Load for a full object-level leak analysis
+
+**Leak score breakdown:**
+
+| Component | Max pts | Signal |
+|---|---|---|
+| Growth rate | 40 | `(avg second half − avg first half) / avg first half` of rolling window |
+| Detached contexts | 40 | `numberOfDetachedContexts × 8` from V8 GC metadata |
+| Sustained growth | 20 | Fraction of 10s intervals where heap grew (>70% = full 20 pts) |
+
+Score < 30 → `stable` · 30–59 or growth ≥ 5% → `growing` · ≥ 60 or growth ≥ 15% → `likely_leak`
+
+**Enabling GC and snapshots in development:**
+
+The `start:dev`, `start:debug`, and `start:prod` scripts all pass `--expose-gc` automatically. If you run Node directly:
+
+```bash
+node --expose-gc dist/main
+```
 
 ### Security
 - **Dashboard Authentication** — optional login wall with HMAC-SHA256 tokens stored in `localStorage`, 24-hour TTL. No separate auth server needed
@@ -220,6 +248,7 @@ Navigate to `/__profiler` after starting your app.
 | `/__profiler/view/code-quality` | ESLint and TypeScript static analysis |
 | `/__profiler/view/events` | Event cascade tree for `EventEmitter2` emissions |
 | `/__profiler/view/cron-jobs` | Live scheduled job monitor — cron, intervals, and timeouts |
+| `/__profiler/view/memory` | Heap monitor — live chart, leak score, per-request memory deltas, GC and snapshot controls |
 | `/__profiler/:id` | Full detail view for a single request |
 
 ### JSON API
@@ -235,6 +264,9 @@ GET /__profiler/api/code-quality      # static analysis (5 min cache)
 GET /__profiler/api/code-quality?force=true
 GET /__profiler/api/events            # event log (live, not cached)
 GET /__profiler/api/cron-jobs         # scheduled job state (live, not cached)
+GET /__profiler/api/memory            # current heap report + leak score + top request deltas
+POST /__profiler/api/memory/gc        # force GC (requires --expose-gc)
+POST /__profiler/api/memory/snapshot  # generate and download a .heapsnapshot file
 ```
 
 ---
@@ -344,6 +376,40 @@ export class TasksService {
   @Timeout('deferred-init', 10_000)
   handleDeferredInit() { /* ... */ }
 }
+```
+
+---
+
+### Memory Monitor
+
+No configuration needed — the Memory Monitor starts automatically when the profiler is enabled. It polls every 10 seconds and becomes meaningful after roughly 2 minutes of uptime (20 samples).
+
+Navigate to `/__profiler/view/memory` to see the live dashboard.
+
+**Force GC** triggers `global.gc()` if Node was started with `--expose-gc`. The `start:dev`, `start:debug`, and `start:prod` scripts in this package include the flag automatically. If you manage your own start command:
+
+```bash
+node --expose-gc dist/main
+```
+
+**Heap Snapshot** generates a V8 heap snapshot on the server, streams it directly to your browser as a file download, and deletes the temp file. To analyse it:
+
+1. Open Chrome DevTools
+2. Go to the **Memory** tab
+3. Click the **Load** icon (folder button at the top)
+4. Select the downloaded `.heapsnapshot` file
+
+The snapshot shows every object in the heap — retained size, shallow size, constructor name, distance from GC root — searchable and filterable. Useful for identifying *what* is leaking after the Memory Monitor tells you *that* something is leaking.
+
+**Reading the leak score:**
+
+Trigger a few demo patterns (if you have the demo module enabled) and watch the score climb in real time:
+
+```
+POST /demo/memory/leak/array      # unbounded array — grows heapUsed
+POST /demo/memory/leak/listeners  # orphaned listeners — raises detached contexts
+POST /demo/memory/leak/cache      # unbounded Map — slow steady growth
+DELETE /demo/memory/leak/all      # clear everything
 ```
 
 ---
